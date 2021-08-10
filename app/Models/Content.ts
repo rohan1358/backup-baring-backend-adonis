@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon'
-import { BaseModel, column, HasMany, hasMany } from '@ioc:Adonis/Lucid/Orm'
+import { afterDelete, BaseModel, column, HasMany, hasMany } from '@ioc:Adonis/Lucid/Orm'
 import Bab from './Bab'
 
 export default class Content extends BaseModel {
@@ -29,5 +29,12 @@ export default class Content extends BaseModel {
       babs_count: this.$extras.babs_count,
       total: this.$extras.total,
     }
+  }
+
+  @afterDelete()
+  public static async afterDeleteHook(content: Content) {
+    const bab = await Bab.findBy('content_id', content.id)
+
+    await bab?.delete()
   }
 }

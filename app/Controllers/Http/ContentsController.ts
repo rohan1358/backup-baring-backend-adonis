@@ -158,4 +158,11 @@ export default class ContentsController {
       content: content.toJSON(),
     }
   }
+
+  public async delete({ params }: HttpContextContract) {
+    const content = await Content.findByOrFail('id', params.id)
+    await content.delete()
+
+    return content.toJSON()
+  }
 }

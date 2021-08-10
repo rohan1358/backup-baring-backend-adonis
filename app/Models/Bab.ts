@@ -1,6 +1,8 @@
 import { DateTime } from 'luxon'
-import { BaseModel, BelongsTo, belongsTo, column } from '@ioc:Adonis/Lucid/Orm'
+import { afterDelete, BaseModel, BelongsTo, belongsTo, column } from '@ioc:Adonis/Lucid/Orm'
 import Content from './Content'
+import Application from '@ioc:Adonis/Core/Application'
+import fs from 'fs'
 
 export default class Bab extends BaseModel {
   @column({ isPrimary: true })
@@ -26,4 +28,11 @@ export default class Bab extends BaseModel {
 
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   public updatedAt: DateTime
+
+  @afterDelete()
+  public static async afterDeleteHook(bab: Bab) {
+    const path = Application.makePath(bab.audio)
+
+    fs.unlink(path, () => {})
+  }
 }

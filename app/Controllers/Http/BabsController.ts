@@ -80,4 +80,9 @@ export default class BabsController {
       },
     }
   }
+  public async delete({ params }: HttpContextContract) {
+    const bab = await Bab.findByOrFail('id', params.id)
+    await bab.delete()
+    return bab.toJSON()
+  }
 }

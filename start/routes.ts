@@ -49,6 +49,12 @@ Route.group(() => {
         cast: (id) => Number(id),
       })
       .middleware('auth:adminApi')
+    Route.delete('/:id', 'ContentsController.delete')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware('auth:adminApi')
     Route.post('/:id', 'ContentsController.addBab')
       .where('id', {
         match: /^[0-9]+$/,
@@ -62,6 +68,12 @@ Route.group(() => {
   Route.group(() => {
     Route.get('/:id/read', 'BabsController.read').middleware(['auth:userApi'])
     Route.get('/:id/stream', 'BabsController.audioStream')
+    Route.delete('/:id', 'BabsController.delete')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware('auth:adminApi')
     Route.put('/:id', 'BabsController.edit')
       .where('id', {
         match: /^[0-9]+$/,
