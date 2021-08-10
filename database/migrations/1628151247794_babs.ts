@@ -6,7 +6,13 @@ export default class Babs extends BaseSchema {
   public async up() {
     this.schema.createTable(this.tableName, (table) => {
       table.increments('id')
-      table.integer('content_id').unsigned().references('id').inTable('contents')
+      table
+        .integer('content_id')
+        .nullable()
+        .unsigned()
+        .references('id')
+        .inTable('contents')
+        .onDelete('set null')
       table.string('title')
       table.text('body')
       table.string('audio')
