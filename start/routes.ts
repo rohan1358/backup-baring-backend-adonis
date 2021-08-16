@@ -35,6 +35,7 @@ Route.group(() => {
   }).prefix('/auth')
 
   Route.group(() => {
+    Route.get('/categories', 'ContentsController.categories')
     Route.get('/:id/detail', 'ContentsController.fullContent').where('id', {
       match: /^[0-9]+$/,
       cast: (id) => Number(id),

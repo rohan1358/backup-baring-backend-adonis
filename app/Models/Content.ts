@@ -1,6 +1,15 @@
 import { DateTime } from 'luxon'
-import { beforeDelete, BaseModel, column, HasMany, hasMany } from '@ioc:Adonis/Lucid/Orm'
+import {
+  beforeDelete,
+  BaseModel,
+  column,
+  HasMany,
+  hasMany,
+  manyToMany,
+  ManyToMany,
+} from '@ioc:Adonis/Lucid/Orm'
 import Bab from './Bab'
+import Category from './Category'
 
 export default class Content extends BaseModel {
   @column({ isPrimary: true })
@@ -17,6 +26,9 @@ export default class Content extends BaseModel {
 
   @hasMany(() => Bab)
   public babs: HasMany<typeof Bab>
+
+  @manyToMany(() => Category)
+  public categories: ManyToMany<typeof Category>
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime

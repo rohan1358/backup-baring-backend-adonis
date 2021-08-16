@@ -2,6 +2,7 @@ import Application from '@ioc:Adonis/Core/Application'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { schema } from '@ioc:Adonis/Core/Validator'
 import Bab from 'App/Models/Bab'
+import Category from 'App/Models/Category'
 import Content from 'App/Models/Content'
 import cuid from 'cuid'
 import fs from 'fs'
@@ -14,13 +15,15 @@ export default class ContentsController {
         schema: schema.create({
           title: schema.string(),
           synopsis: schema.string(),
+          categories: schema.array.optional().members(schema.number()),
+          createCategories: schema.array.optional().members(schema.string()),
         }),
       })
     } catch (e) {
       return response.badRequest(e.messages)
     }
 
-    const { title, synopsis } = payload
+    const { title, synopsis, categories: categoriesList, createCategories } = payload
 
     const cover = request.file('cover', {
       size: '2mb',
@@ -43,7 +46,29 @@ export default class ContentsController {
       name: fileName,
     })
 
-    return content.toJSON()
+    if (categoriesList?.length) {
+      const categories = await Category.query().whereIn('id', categoriesList)
+      const validCategories: number[] = []
+
+      for (let category of categories) {
+        validCategories.push(category.id)
+      }
+
+      if (validCategories.length) await content.related('categories').attach(validCategories)
+    }
+
+    if (createCategories?.length) {
+      const newCategoriesData: object[] = []
+      for (let categoryName of createCategories) {
+        newCategoriesData.push({ name: categoryName })
+      }
+      await content.related('categories').createMany(newCategoriesData)
+    }
+
+    return {
+      ...content.toJSON(),
+      categories: await content.related('categories').query(),
+    }
   }
   public async index({ request }: HttpContextContract) {
     const total = await Content.query().count('* as total')
@@ -64,13 +89,15 @@ export default class ContentsController {
         schema: schema.create({
           title: schema.string.optional(),
           synopsis: schema.string.optional(),
+          categories: schema.array.optional().members(schema.number()),
+          createCategories: schema.array.optional().members(schema.string()),
         }),
       })
     } catch (e) {
       return response.badRequest(e.messages)
     }
 
-    const { title, synopsis } = payload
+    const { title, synopsis, categories: categoryList, createCategories } = payload
     const cover = request.file('cover', {
       size: '2mb',
       extnames: ['png', 'jpg', 'jpeg', 'bmp'],
@@ -94,13 +121,44 @@ export default class ContentsController {
 
     await content.save()
 
-    return content.toJSON()
+    if (categoryList?.length) {
+      const categories = await Category.query().whereIn('id', categoryList)
+      const contentCategories = await content.related('categories').query()
+      const validCategories: number[] = []
+      const deletedCategories: number[] = []
+
+      for (let category of categories) {
+        validCategories.push(category.id)
+      }
+
+      for (let contentCategory of contentCategories) {
+        const index = validCategories.indexOf(contentCategory.id)
+        if (index >= 0) {
+          validCategories.splice(index, 1)
+        } else {
+          deletedCategories.push(contentCategory.id)
+        }
+      }
+
+      if (validCategories.length) await content.related('categories').attach(validCategories)
+      if (deletedCategories.length) await content.related('categories').detach(validCategories)
+    }
+    if (createCategories?.length) {
+      const newCategoriesData: object[] = []
+      for (let categoryName of createCategories) {
+        newCategoriesData.push({ name: categoryName })
+      }
+      await content.related('categories').createMany(newCategoriesData)
+    }
+
+    return { ...content.toJSON(), categories: await content.related('categories').query() }
   }
 
   public async rawContent({ params }: HttpContextContract) {
     const content = await Content.findByOrFail('id', params.id)
+    const categories = await content.related('categories').query().select('id', 'name')
 
-    return content.toJSON()
+    return { ...content.toJSON(), categories }
   }
 
   public async fullContent({ params }: HttpContextContract) {
@@ -164,5 +222,11 @@ export default class ContentsController {
     await content.delete()
 
     return content.toJSON()
+  }
+
+  public async categories() {
+    const categories = await Category.all()
+
+    return categories
   }
 }
