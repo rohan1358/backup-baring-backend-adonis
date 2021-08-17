@@ -1,6 +1,7 @@
-import Application from '@ioc:Adonis/Core/Application'
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { schema } from '@ioc:Adonis/Core/Validator'
+import s3 from 'App/Helpers/s3'
 import Bab from 'App/Models/Bab'
 import Category from 'App/Models/Category'
 import Content from 'App/Models/Content'
@@ -30,6 +31,11 @@ export default class ContentsController {
       extnames: ['png', 'jpg', 'jpeg', 'bmp'],
     })
 
+    const audio = request.file('audio', {
+      size: '100mb',
+      extnames: ['mp3', 'ogg', 'wav', 'flac', 'aac'],
+    })
+
     if (!cover) {
       return response.badRequest('Cover invalid')
     }
@@ -39,12 +45,29 @@ export default class ContentsController {
     const content = new Content()
     content.title = title
     content.synopsis = synopsis
-    content.cover = `/covers/${fileName}`
+    content.cover = `${fileName}`
+
+    if (audio) {
+      const audioFileName = `${cuid()}.${audio.extname}`
+      content.audio = audioFileName
+
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: 'plot-audio-01',
+          Key: audioFileName,
+          Body: fs.createReadStream(audio.tmpPath!),
+        })
+      )
+    }
 
     await content.save()
-    await cover.move(Application.publicPath('covers'), {
-      name: fileName,
+
+    const S3Command = new PutObjectCommand({
+      Bucket: 'covers-01',
+      Key: fileName,
+      Body: fs.createReadStream(cover.tmpPath!),
     })
+    await s3.send(S3Command)
 
     if (categoriesList?.length) {
       const categories = await Category.query().whereIn('id', categoriesList)
@@ -102,6 +125,10 @@ export default class ContentsController {
       size: '2mb',
       extnames: ['png', 'jpg', 'jpeg', 'bmp'],
     })
+    const audio = request.file('audio', {
+      size: '100mb',
+      extnames: ['mp3', 'ogg', 'wav', 'flac', 'aac'],
+    })
 
     if (title) {
       content.title = title
@@ -111,12 +138,31 @@ export default class ContentsController {
     }
     if (cover) {
       const fileName = `${cuid()}.${cover.extname}`
-      fs.unlink(Application.publicPath(content.cover), () => {})
-      await cover.move(Application.publicPath('covers'), {
-        name: fileName,
-      })
+      await s3.send(new DeleteObjectCommand({ Key: content.cover, Bucket: 'covers-01' }))
+      await s3.send(
+        new PutObjectCommand({
+          Key: fileName,
+          Bucket: 'covers-01',
+          Body: fs.createReadStream(cover.tmpPath!),
+        })
+      )
 
-      content.cover = `/covers/${fileName}`
+      content.cover = fileName
+    }
+    if (audio) {
+      const audioFileName = `${cuid()}.${audio.extname}`
+      if (content.audio) {
+        await s3.send(new DeleteObjectCommand({ Key: content.audio, Bucket: 'plot-audio-01' }))
+      }
+      await s3.send(
+        new PutObjectCommand({
+          Key: audioFileName,
+          Bucket: 'plot-audio-01',
+          Body: fs.createReadStream(audio.tmpPath!),
+        })
+      )
+
+      content.cover = audioFileName
     }
 
     await content.save()
@@ -162,14 +208,15 @@ export default class ContentsController {
   }
 
   public async fullContent({ params }: HttpContextContract) {
-    const contents = await Content.findByOrFail('id', params.id)
-    const babs = await contents
+    const content = await Content.findByOrFail('id', params.id)
+    const babs = await content
       .related('babs')
       .query()
       .select('id', 'title')
       .orderBy('created_at', 'asc')
+    const categories = await content.related('categories').query().select('id', 'name')
 
-    return { ...contents.toJSON(), babs }
+    return { ...content.toJSON(), babs, categories }
   }
 
   public async addBab({ params, request, response }: HttpContextContract) {
@@ -203,13 +250,17 @@ export default class ContentsController {
     const bab = new Bab()
     bab.title = title
     bab.body = body
-    bab.audio = `/audio/${fileName}`
+    bab.audio = fileName
     bab.contentId = content.id
 
     await bab.save()
-    await audio.move(Application.makePath('audio'), {
-      name: fileName,
-    })
+    await s3.send(
+      new PutObjectCommand({
+        Key: fileName,
+        Bucket: 'ring-audio-01',
+        Body: fs.createReadStream(audio.tmpPath!),
+      })
+    )
 
     return {
       ...bab.toJSON(),
@@ -228,5 +279,28 @@ export default class ContentsController {
     const categories = await Category.all()
 
     return categories
+  }
+
+  public async streamCover({ params, response }: HttpContextContract) {
+    const content = await Content.findByOrFail('cover', params.filename)
+
+    const file = await s3.send(new GetObjectCommand({ Bucket: 'covers-01', Key: content.cover }))
+    return response.stream(file.Body)
+  }
+
+  public async streamSynopsis({ response, request, params }: HttpContextContract) {
+    const { audio } = await Content.findByOrFail('audio', params.filename)
+    const range = request.header('range')
+    const file = await s3.send(
+      new GetObjectCommand({ Key: audio, Bucket: 'plot-audio-01', Range: range })
+    )
+
+    response.status(206)
+    response.header('Content-Range', file.ContentRange!)
+    response.header('Accept-Ranges', 'bytes')
+    response.header('Content-Length', file.ContentLength!)
+    response.header('Content-Type', file.ContentType!)
+
+    response.stream(file.Body)
   }
 }

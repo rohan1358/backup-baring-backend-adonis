@@ -9,6 +9,7 @@ export default class Contents extends BaseSchema {
       table.string('title')
       table.string('cover')
       table.text('synopsis')
+      table.string('audio').nullable()
 
       /**
        * Uses timestamptz for PostgreSQL and DATETIME2 for MSSQL

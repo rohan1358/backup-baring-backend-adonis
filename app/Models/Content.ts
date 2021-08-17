@@ -7,9 +7,12 @@ import {
   hasMany,
   manyToMany,
   ManyToMany,
+  afterDelete,
 } from '@ioc:Adonis/Lucid/Orm'
 import Bab from './Bab'
 import Category from './Category'
+import s3 from 'App/Helpers/s3'
+import { DeleteObjectCommand } from '@aws-sdk/client-s3'
 
 export default class Content extends BaseModel {
   @column({ isPrimary: true })
@@ -18,11 +21,26 @@ export default class Content extends BaseModel {
   @column()
   public title: string
 
-  @column()
+  @column({
+    serialize: (value: string) => {
+      return '/api/content/cover/' + value
+    },
+  })
   public cover: string
 
   @column()
   public synopsis: string
+
+  @column({
+    serialize: (value: string) => {
+      if (value) {
+        return '/api/content/synopsis/' + value
+      }
+
+      return null
+    },
+  })
+  public audio: string
 
   @hasMany(() => Bab)
   public babs: HasMany<typeof Bab>
@@ -48,5 +66,13 @@ export default class Content extends BaseModel {
     const bab = await Bab.findBy('content_id', content.id)
 
     await bab?.delete()
+  }
+
+  @afterDelete()
+  public static async afterDeleteHook(content: Content) {
+    await s3.send(new DeleteObjectCommand({ Key: content.cover, Bucket: 'covers-01' }))
+    if (content.audio) {
+      await s3.send(new DeleteObjectCommand({ Key: content.audio, Bucket: 'plot-audio-01' }))
+    }
   }
 }

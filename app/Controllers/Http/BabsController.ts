@@ -1,9 +1,10 @@
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
-import Bab from 'App/Models/Bab'
-import fs from 'fs'
-import Application from '@ioc:Adonis/Core/Application'
 import { schema } from '@ioc:Adonis/Core/Validator'
+import s3 from 'App/Helpers/s3'
+import Bab from 'App/Models/Bab'
 import cuid from 'cuid'
+import fs from 'fs'
 
 export default class BabsController {
   public async get({ params }: HttpContextContract) {
@@ -15,11 +16,20 @@ export default class BabsController {
       content: content?.toJSON(),
     }
   }
-  public async audioStream({ response, params }: HttpContextContract) {
+  public async audioStream({ response, request, params }: HttpContextContract) {
     const { audio } = await Bab.findByOrFail('id', params.id)
-    const path = Application.makePath(audio)
+    const range = request.header('range')
+    const file = await s3.send(
+      new GetObjectCommand({ Key: audio, Bucket: 'ring-audio-01', Range: range })
+    )
 
-    response.download(path, true)
+    response.status(206)
+    response.header('Content-Range', file.ContentRange!)
+    response.header('Accept-Ranges', 'bytes')
+    response.header('Content-Length', file.ContentLength!)
+    response.header('Content-Type', file.ContentType!)
+
+    response.stream(file.Body)
   }
   public async edit({ params, request, response }: HttpContextContract) {
     const bab = await Bab.findByOrFail('id', params.id)
@@ -52,11 +62,15 @@ export default class BabsController {
     }
     if (audio) {
       const fileName = `${cuid()}.${audio.extname}`
-      await fs.unlinkSync(Application.makePath(bab.audio))
-      await audio.move(Application.makePath('audio'), {
-        name: fileName,
-      })
-      bab.audio = `/audio/${fileName}`
+      await s3.send(new DeleteObjectCommand({ Key: bab.audio, Bucket: 'ring-audio-01' }))
+      await s3.send(
+        new PutObjectCommand({
+          Key: fileName,
+          Bucket: 'ring-audio-01',
+          Body: fs.createReadStream(audio.tmpPath!),
+        })
+      )
+      bab.audio = `${fileName}`
     }
 
     await bab.save()

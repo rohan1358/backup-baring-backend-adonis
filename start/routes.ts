@@ -36,6 +36,8 @@ Route.group(() => {
 
   Route.group(() => {
     Route.get('/categories', 'ContentsController.categories')
+    Route.get('/cover/:filename', 'ContentsController.streamCover')
+    Route.get('/synopsis/:filename', 'ContentsController.streamSynopsis')
     Route.get('/:id/detail', 'ContentsController.fullContent').where('id', {
       match: /^[0-9]+$/,
       cast: (id) => Number(id),
