@@ -35,9 +35,6 @@ Route.group(() => {
   }).prefix('/auth')
 
   Route.group(() => {
-    Route.get('/categories', 'ContentsController.categories')
-    Route.get('/cover/:filename', 'ContentsController.streamCover')
-    Route.get('/synopsis/:filename', 'ContentsController.streamSynopsis')
     Route.get('/:id/detail', 'ContentsController.fullContent').where('id', {
       match: /^[0-9]+$/,
       cast: (id) => Number(id),
@@ -70,7 +67,6 @@ Route.group(() => {
 
   Route.group(() => {
     Route.get('/:id/read', 'BabsController.read').middleware(['auth:userApi'])
-    Route.get('/:id/stream', 'BabsController.audioStream')
     Route.delete('/:id', 'BabsController.delete')
       .where('id', {
         match: /^[0-9]+$/,
@@ -90,4 +86,18 @@ Route.group(() => {
       })
       .middleware('auth:adminApi')
   }).prefix('/bab')
+
+  Route.group(() => {
+    Route.get('/', 'CategoriesController.index')
+  }).prefix('/categories')
+
+  Route.group(() => {
+    Route.get('/', 'AuthorsController.index')
+  }).prefix('/authors')
+
+  Route.group(() => {
+    Route.get('/cover/:filename', 'StreamsController.streamCover')
+    Route.get('/synopsis/:filename', 'StreamsController.streamSynopsis')
+    Route.get('/bab/:id', 'StreamsController.streamBab')
+  }).prefix('/stream')
 }).prefix('/api')

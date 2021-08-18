@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { schema } from '@ioc:Adonis/Core/Validator'
 import s3 from 'App/Helpers/s3'
@@ -16,21 +16,7 @@ export default class BabsController {
       content: content?.toJSON(),
     }
   }
-  public async audioStream({ response, request, params }: HttpContextContract) {
-    const { audio } = await Bab.findByOrFail('id', params.id)
-    const range = request.header('range')
-    const file = await s3.send(
-      new GetObjectCommand({ Key: audio, Bucket: 'ring-audio-01', Range: range })
-    )
 
-    response.status(206)
-    response.header('Content-Range', file.ContentRange!)
-    response.header('Accept-Ranges', 'bytes')
-    response.header('Content-Length', file.ContentLength!)
-    response.header('Content-Type', file.ContentType!)
-
-    response.stream(file.Body)
-  }
   public async edit({ params, request, response }: HttpContextContract) {
     const bab = await Bab.findByOrFail('id', params.id)
     const content = await bab.related('content').query().select('id', 'title', 'cover').first()

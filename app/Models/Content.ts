@@ -13,6 +13,7 @@ import Bab from './Bab'
 import Category from './Category'
 import s3 from 'App/Helpers/s3'
 import { DeleteObjectCommand } from '@aws-sdk/client-s3'
+import Author from './Author'
 
 export default class Content extends BaseModel {
   @column({ isPrimary: true })
@@ -23,7 +24,7 @@ export default class Content extends BaseModel {
 
   @column({
     serialize: (value: string) => {
-      return '/api/content/cover/' + value
+      return '/api/stream/cover/' + value
     },
   })
   public cover: string
@@ -34,7 +35,7 @@ export default class Content extends BaseModel {
   @column({
     serialize: (value: string) => {
       if (value) {
-        return '/api/content/synopsis/' + value
+        return '/api/stream/synopsis/' + value
       }
 
       return null
@@ -47,6 +48,9 @@ export default class Content extends BaseModel {
 
   @manyToMany(() => Category)
   public categories: ManyToMany<typeof Category>
+
+  @manyToMany(() => Author)
+  public authors: ManyToMany<typeof Author>
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime

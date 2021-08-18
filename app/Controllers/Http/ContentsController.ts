@@ -1,7 +1,8 @@
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { schema } from '@ioc:Adonis/Core/Validator'
 import s3 from 'App/Helpers/s3'
+import Author from 'App/Models/Author'
 import Bab from 'App/Models/Bab'
 import Category from 'App/Models/Category'
 import Content from 'App/Models/Content'
@@ -18,13 +19,22 @@ export default class ContentsController {
           synopsis: schema.string(),
           categories: schema.array.optional().members(schema.number()),
           createCategories: schema.array.optional().members(schema.string()),
+          authors: schema.array.optional().members(schema.number()),
+          createAuthors: schema.array.optional().members(schema.string()),
         }),
       })
     } catch (e) {
       return response.badRequest(e.messages)
     }
 
-    const { title, synopsis, categories: categoriesList, createCategories } = payload
+    const {
+      title,
+      synopsis,
+      categories: categoriesList,
+      createCategories,
+      authors: authorsList,
+      createAuthors,
+    } = payload
 
     const cover = request.file('cover', {
       size: '2mb',
@@ -88,9 +98,29 @@ export default class ContentsController {
       await content.related('categories').createMany(newCategoriesData)
     }
 
+    if (authorsList?.length) {
+      const authors = await Author.query().whereIn('id', authorsList)
+      const validAuthors: number[] = []
+
+      for (let author of authors) {
+        validAuthors.push(author.id)
+      }
+
+      if (validAuthors.length) await content.related('authors').attach(validAuthors)
+    }
+
+    if (createAuthors?.length) {
+      const AuthorsData: object[] = []
+      for (let authorName of createAuthors) {
+        AuthorsData.push({ name: authorName })
+      }
+      await content.related('authors').createMany(AuthorsData)
+    }
+
     return {
       ...content.toJSON(),
       categories: await content.related('categories').query(),
+      authors: await content.related('authors').query(),
     }
   }
   public async index({ request }: HttpContextContract) {
@@ -114,13 +144,22 @@ export default class ContentsController {
           synopsis: schema.string.optional(),
           categories: schema.array.optional().members(schema.number()),
           createCategories: schema.array.optional().members(schema.string()),
+          authors: schema.array.optional().members(schema.number()),
+          createAuthors: schema.array.optional().members(schema.string()),
         }),
       })
     } catch (e) {
       return response.badRequest(e.messages)
     }
 
-    const { title, synopsis, categories: categoryList, createCategories } = payload
+    const {
+      title,
+      synopsis,
+      categories: categoryList,
+      createCategories,
+      authors: authorList,
+      createAuthors,
+    } = payload
     const cover = request.file('cover', {
       size: '2mb',
       extnames: ['png', 'jpg', 'jpeg', 'bmp'],
@@ -197,14 +236,49 @@ export default class ContentsController {
       await content.related('categories').createMany(newCategoriesData)
     }
 
-    return { ...content.toJSON(), categories: await content.related('categories').query() }
+    if (authorList?.length) {
+      const authors = await Author.query().whereIn('id', authorList)
+      const contentAuthors = await content.related('authors').query()
+      const validAuthors: number[] = []
+      const deletedAuthors: number[] = []
+
+      for (let author of authors) {
+        validAuthors.push(author.id)
+      }
+
+      for (let contentAuthor of contentAuthors) {
+        const index = validAuthors.indexOf(contentAuthor.id)
+        if (index >= 0) {
+          validAuthors.splice(index, 1)
+        } else {
+          deletedAuthors.push(contentAuthor.id)
+        }
+      }
+
+      if (validAuthors.length) await content.related('authors').attach(validAuthors)
+      if (deletedAuthors.length) await content.related('authors').detach(validAuthors)
+    }
+    if (createAuthors?.length) {
+      const newAuthorsData: object[] = []
+      for (let authorName of createAuthors) {
+        newAuthorsData.push({ name: authorName })
+      }
+      await content.related('authors').createMany(newAuthorsData)
+    }
+
+    return {
+      ...content.toJSON(),
+      categories: await content.related('categories').query(),
+      authors: await content.related('authors').query(),
+    }
   }
 
   public async rawContent({ params }: HttpContextContract) {
     const content = await Content.findByOrFail('id', params.id)
     const categories = await content.related('categories').query().select('id', 'name')
+    const authors = await content.related('authors').query().select('id', 'name')
 
-    return { ...content.toJSON(), categories }
+    return { ...content.toJSON(), categories, authors }
   }
 
   public async fullContent({ params }: HttpContextContract) {
@@ -215,8 +289,9 @@ export default class ContentsController {
       .select('id', 'title')
       .orderBy('created_at', 'asc')
     const categories = await content.related('categories').query().select('id', 'name')
+    const authors = await content.related('authors').query().select('id', 'name')
 
-    return { ...content.toJSON(), babs, categories }
+    return { ...content.toJSON(), babs, categories, authors }
   }
 
   public async addBab({ params, request, response }: HttpContextContract) {
@@ -273,34 +348,5 @@ export default class ContentsController {
     await content.delete()
 
     return content.toJSON()
-  }
-
-  public async categories() {
-    const categories = await Category.all()
-
-    return categories
-  }
-
-  public async streamCover({ params, response }: HttpContextContract) {
-    const content = await Content.findByOrFail('cover', params.filename)
-
-    const file = await s3.send(new GetObjectCommand({ Bucket: 'covers-01', Key: content.cover }))
-    return response.stream(file.Body)
-  }
-
-  public async streamSynopsis({ response, request, params }: HttpContextContract) {
-    const { audio } = await Content.findByOrFail('audio', params.filename)
-    const range = request.header('range')
-    const file = await s3.send(
-      new GetObjectCommand({ Key: audio, Bucket: 'plot-audio-01', Range: range })
-    )
-
-    response.status(206)
-    response.header('Content-Range', file.ContentRange!)
-    response.header('Accept-Ranges', 'bytes')
-    response.header('Content-Length', file.ContentLength!)
-    response.header('Content-Type', file.ContentType!)
-
-    response.stream(file.Body)
   }
 }
