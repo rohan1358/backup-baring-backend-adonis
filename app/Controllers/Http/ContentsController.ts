@@ -256,7 +256,7 @@ export default class ContentsController {
       }
 
       if (validAuthors.length) await content.related('authors').attach(validAuthors)
-      if (deletedAuthors.length) await content.related('authors').detach(validAuthors)
+      if (deletedAuthors.length) await content.related('authors').detach(deletedAuthors)
     }
     if (createAuthors?.length) {
       const newAuthorsData: object[] = []
