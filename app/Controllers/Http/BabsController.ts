@@ -65,20 +65,23 @@ export default class BabsController {
       content: content?.toJSON(),
     }
   }
-  public async read({ params }: HttpContextContract) {
-    const bab = await Bab.findByOrFail('id', params.id)
-    const content = await bab.related('content').query().select('id', 'title', 'cover').first()
-    const babs =
-      (await content?.related('babs').query().select('id', 'title').orderBy('created_at', 'asc')) ||
-      []
+  public async read({ params, response }: HttpContextContract) {
+    const bab = await Bab.query()
+      .preload('content', (query) => {
+        query.select('id', 'title', 'cover').preload('babs', (query) => {
+          query.select('id', 'title', 'audio').orderBy('created_at', 'asc')
+        })
+      })
+      .where('id', params.id)
+      .first()
 
-    return {
-      ...bab.toJSON(),
-      content: {
-        ...content?.toJSON(),
-        babs,
-      },
+    if (!bab) {
+      return response.notFound()
     }
+
+    const babJSON = bab.serialize()
+
+    return babJSON
   }
   public async delete({ params }: HttpContextContract) {
     const bab = await Bab.findByOrFail('id', params.id)

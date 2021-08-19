@@ -30,13 +30,18 @@ export default class StreamsController {
   }
 
   public async streamBab({ response, request, params }: HttpContextContract) {
-    const { audio } = await Bab.findByOrFail('id', params.id)
+    if (!request.hasValidSignature()) {
+      return response.methodNotAllowed()
+    }
+
+    const { audio } = await Bab.findByOrFail('audio', params.filename)
     const range = request.header('range')
     const file = await s3.send(
       new GetObjectCommand({ Key: audio, Bucket: 'ring-audio-01', Range: range })
     )
 
     response.status(206)
+    response.header('Cache-Control', 'no-store')
     response.header('Content-Range', file.ContentRange!)
     response.header('Accept-Ranges', 'bytes')
     response.header('Content-Length', file.ContentLength!)

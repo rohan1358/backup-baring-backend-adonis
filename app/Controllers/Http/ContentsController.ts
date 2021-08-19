@@ -128,10 +128,15 @@ export default class ContentsController {
     const contents = await Content.query()
       .select('id', 'title', 'cover', 'created_at')
       .withCount('babs')
+      .preload('authors', (query) => {
+        query.select('id', 'name')
+      })
       .orderBy('created_at', 'desc')
       .forPage(request.input('page', 1), 20)
 
-    return { ...total[0].toJSON(), contents }
+    const contentsJson = contents.map((content) => content.serialize())
+
+    return { ...total[0].toJSON(), contents: contentsJson }
   }
   public async editContent({ request, response, params }: HttpContextContract) {
     const content = await Content.findByOrFail('id', params.id)
@@ -281,17 +286,27 @@ export default class ContentsController {
     return { ...content.toJSON(), categories, authors }
   }
 
-  public async fullContent({ params }: HttpContextContract) {
-    const content = await Content.findByOrFail('id', params.id)
-    const babs = await content
-      .related('babs')
-      .query()
-      .select('id', 'title')
-      .orderBy('created_at', 'asc')
-    const categories = await content.related('categories').query().select('id', 'name')
-    const authors = await content.related('authors').query().select('id', 'name')
+  public async fullContent({ params, response }: HttpContextContract) {
+    const content = await Content.query()
+      .where('id', params.id)
+      .preload('authors', (query) => {
+        query.select('id', 'name')
+      })
+      .preload('categories', (query) => {
+        query.select('id', 'name')
+      })
+      .preload('babs', (query) => {
+        query.select('id', 'title').orderBy('created_at', 'asc')
+      })
+      .first()
 
-    return { ...content.toJSON(), babs, categories, authors }
+    if (!content) {
+      return response.notFound('Content not found')
+    }
+
+    const contentJSON = content.serialize()
+
+    return contentJSON
   }
 
   public async addBab({ params, request, response }: HttpContextContract) {

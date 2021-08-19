@@ -98,6 +98,6 @@ Route.group(() => {
   Route.group(() => {
     Route.get('/cover/:filename', 'StreamsController.streamCover')
     Route.get('/synopsis/:filename', 'StreamsController.streamSynopsis')
-    Route.get('/bab/:id', 'StreamsController.streamBab')
+    Route.get('/bab/:filename', 'StreamsController.streamBab').as('streamBab')
   }).prefix('/stream')
 }).prefix('/api')

@@ -3,6 +3,7 @@ import { afterDelete, BaseModel, BelongsTo, belongsTo, column } from '@ioc:Adoni
 import Content from './Content'
 import s3 from 'App/Helpers/s3'
 import { DeleteObjectCommand } from '@aws-sdk/client-s3'
+import Route from '@ioc:Adonis/Core/Route'
 
 export default class Bab extends BaseModel {
   @column({ isPrimary: true })
@@ -14,7 +15,19 @@ export default class Bab extends BaseModel {
   @column()
   public body: string
 
-  @column({ serializeAs: null })
+  @column({
+    serialize: (value: string) => {
+      return Route.makeSignedUrl(
+        'streamBab',
+        {
+          filename: value,
+        },
+        {
+          expiresIn: '30m',
+        }
+      )
+    },
+  })
   public audio: string
 
   @column()
