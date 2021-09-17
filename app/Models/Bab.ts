@@ -1,9 +1,18 @@
 import { DateTime } from 'luxon'
-import { afterDelete, BaseModel, BelongsTo, belongsTo, column } from '@ioc:Adonis/Lucid/Orm'
+import {
+  afterDelete,
+  BaseModel,
+  BelongsTo,
+  belongsTo,
+  column,
+  HasMany,
+  hasMany,
+} from '@ioc:Adonis/Lucid/Orm'
 import Content from './Content'
 import s3 from 'App/Helpers/s3'
 import { DeleteObjectCommand } from '@aws-sdk/client-s3'
 import Route from '@ioc:Adonis/Core/Route'
+import ReadLog from './ReadLog'
 
 export default class Bab extends BaseModel {
   @column({ isPrimary: true })
@@ -35,6 +44,9 @@ export default class Bab extends BaseModel {
 
   @belongsTo(() => Content)
   public content: BelongsTo<typeof Content>
+
+  @hasMany(() => ReadLog)
+  public reads: HasMany<typeof ReadLog>
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime

@@ -3,6 +3,7 @@ import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { schema } from '@ioc:Adonis/Core/Validator'
 import s3 from 'App/Helpers/s3'
 import Bab from 'App/Models/Bab'
+import ReadLog from 'App/Models/ReadLog'
 import cuid from 'cuid'
 import fs from 'fs'
 
@@ -65,7 +66,7 @@ export default class BabsController {
       content: content?.toJSON(),
     }
   }
-  public async read({ params, response }: HttpContextContract) {
+  public async read({ params, response, auth }: HttpContextContract) {
     const bab = await Bab.query()
       .preload('content', (query) => {
         query.select('id', 'title', 'cover').preload('babs', (query) => {
@@ -78,6 +79,12 @@ export default class BabsController {
     if (!bab) {
       return response.notFound()
     }
+
+    const readLog = new ReadLog()
+    readLog.babId = bab.id
+    readLog.userId = auth.use('userApi').user?.id!
+
+    await readLog.save()
 
     const babJSON = bab.serialize()
 

@@ -25,6 +25,7 @@ Route.group(() => {
     Route.group(() => {
       Route.get('/get-token', 'AuthController.login')
       Route.post('/register', 'AuthController.register')
+      Route.get('/verify-token', 'AuthController.verify').middleware('auth:userApi')
     }).prefix('/user')
 
     Route.group(() => {
@@ -48,20 +49,23 @@ Route.group(() => {
         match: /^[0-9]+$/,
         cast: (id) => Number(id),
       })
-      .middleware('auth:adminApi')
+      .middleware(['auth:adminApi', 'adminRole:super'])
     Route.delete('/:id', 'ContentsController.delete')
       .where('id', {
         match: /^[0-9]+$/,
         cast: (id) => Number(id),
       })
-      .middleware('auth:adminApi')
+      .middleware(['auth:adminApi', 'adminRole:super'])
     Route.post('/:id', 'ContentsController.addBab')
       .where('id', {
         match: /^[0-9]+$/,
         cast: (id) => Number(id),
       })
-      .middleware('auth:adminApi')
-    Route.post('/', 'ContentsController.addContent').middleware('auth:adminApi')
+      .middleware(['auth:adminApi', 'adminRole:super'])
+    Route.post('/', 'ContentsController.addContent').middleware([
+      'auth:adminApi',
+      'adminRole:super',
+    ])
     Route.get('/', 'ContentsController.index')
   }).prefix('/content')
 
@@ -72,19 +76,19 @@ Route.group(() => {
         match: /^[0-9]+$/,
         cast: (id) => Number(id),
       })
-      .middleware('auth:adminApi')
+      .middleware(['auth:adminApi', 'adminRole:super'])
     Route.put('/:id', 'BabsController.edit')
       .where('id', {
         match: /^[0-9]+$/,
         cast: (id) => Number(id),
       })
-      .middleware('auth:adminApi')
+      .middleware(['auth:adminApi', 'adminRole:super'])
     Route.get('/:id', 'BabsController.get')
       .where('id', {
         match: /^[0-9]+$/,
         cast: (id) => Number(id),
       })
-      .middleware('auth:adminApi')
+      .middleware(['auth:adminApi', 'adminRole:super'])
   }).prefix('/bab')
 
   Route.group(() => {
@@ -100,4 +104,36 @@ Route.group(() => {
     Route.get('/synopsis/:filename', 'StreamsController.streamSynopsis')
     Route.get('/bab/:filename', 'StreamsController.streamBab').as('streamBab')
   }).prefix('/stream')
+
+  Route.group(() => {
+    Route.post('/', 'CoursesController.create').middleware(['auth:adminApi', 'adminRole:super'])
+  }).prefix('/course')
+
+  Route.group(() => {
+    Route.delete('/:id', 'PartnersController.delete').where('id', {
+      match: /^[0-9]+$/,
+      cast: (id) => Number(id),
+    })
+    Route.put('/:id', 'PartnersController.edit').where('id', {
+      match: /^[0-9]+$/,
+      cast: (id) => Number(id),
+    })
+    Route.get('/', 'PartnersController.index')
+    Route.post('/', 'PartnersController.create')
+  })
+    .prefix('/partner')
+    .middleware(['auth:adminApi', 'adminRole:super'])
+
+  Route.group(() => {
+    Route.get('/daily-user-login', 'StatsController.userLogin')
+    Route.get('/most-read-book', 'StatsController.mostReadBook')
+    Route.get('/most-read-category', 'StatsController.mostReadCategory')
+    Route.get('/monthly-active-user', 'StatsController.mostActiveUser')
+    Route.get('/user-reading-log/:id', 'StatsController.userReads').where('id', {
+      match: /^[0-9]+$/,
+      cast: (id) => Number(id),
+    })
+  })
+    .prefix('/stat')
+    .middleware(['auth:adminApi', 'adminRole:partner'])
 }).prefix('/api')

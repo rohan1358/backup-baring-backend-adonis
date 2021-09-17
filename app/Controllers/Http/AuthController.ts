@@ -7,23 +7,27 @@ import moment from 'moment'
 import makeQuery from 'App/Helpers/makeQuery'
 import Admin from 'App/Models/Admin'
 import Hash from '@ioc:Adonis/Core/Hash'
+import LoginLog from 'App/Models/LoginLog'
+import Partner from 'App/Models/Partner'
+import Database from '@ioc:Adonis/Lucid/Database'
 
 export default class AuthController {
-  public async login({ request, response, auth }: HttpContextContract) {
-    let payload
-    try {
-      payload = await validator.validate({
-        schema: schema.create({
-          username: schema.string(),
-          password: schema.string(),
-        }),
-        data: request.all(),
-      })
-    } catch (error) {
-      return response.badRequest(error.messages)
-    }
+  private async _userLoginLog(id: number, trx) {
+    const loginLog = new LoginLog()
+    loginLog.userId = id
+    await loginLog.useTransaction(trx).save()
+    return
+  }
 
-    const { username, password } = payload
+  public async login({ request, response, auth }: HttpContextContract) {
+    const { username, password } = await validator.validate({
+      schema: schema.create({
+        username: schema.string(),
+        password: schema.string(),
+      }),
+      data: request.all(),
+    })
+
     let axiosResponse
 
     try {
@@ -40,59 +44,73 @@ export default class AuthController {
 
     if (!axiosResponse.data.ok) return response.unauthorized()
 
-    const { user_id, name, categories } = axiosResponse.data
+    const { user_id, name, categories, groups = [] } = axiosResponse.data
 
-    const user = await User.findBy('amember_id', user_id)
+    const result = await Database.transaction(async (trx) => {
+      const user = await User.findBy('amember_id', user_id)
 
-    if (!user) {
-      const newUser = new User()
-      newUser.amemberId = user_id
+      if (!user) {
+        const newUser = new User()
+        newUser.amemberId = user_id
+        newUser.fullname = name
+        newUser.username = username
 
-      let subscriber = false
+        if (groups.length) {
+          const partner = await Partner.findBy('amember_group', groups[0])
+          if (partner) {
+            newUser.partnerId = partner.id
+          }
+        }
 
-      if (categories[1]) {
-        newUser.subscriptionEnd = categories[1]
-        subscriber = true
+        let subscriber = false
+
+        if (categories[1]) {
+          newUser.subscriptionEnd = categories[1]
+          subscriber = true
+        }
+
+        await newUser.useTransaction(trx).save()
+        await this._userLoginLog(newUser.id, trx)
+
+        return {
+          user: newUser,
+          subscriber,
+        }
+      } else {
+        let subscriber = false
+
+        if (
+          categories[1] &&
+          (!user.subscriptionEnd ||
+            (user.subscriptionEnd &&
+              moment(user.subscriptionEnd).format('YYYY-MM-DD') !==
+                moment(categories[1], 'YYYY-MM-DD').format('YYYY-MM-DD')))
+        ) {
+          user.subscriptionEnd = categories[1]
+          await user.useTransaction(trx).save()
+
+          subscriber = true
+        }
+
+        if (user.subscriptionEnd && moment(user.subscriptionEnd).toDate() <= new Date()) {
+          subscriber = true
+        }
+
+        await this._userLoginLog(user.id, trx)
+
+        return {
+          user,
+          subscriber,
+        }
       }
+    })
 
-      await newUser.save()
-      const token = (await auth.use('userApi').generate(newUser)).token
-
-      return {
-        id: newUser.id,
-        fullname: name,
-        amember_id: newUser.amemberId,
-        token,
-        subscriber,
-      }
-    } else {
-      let subscriber = false
-      const token = (await auth.use('userApi').generate(user)).token
-
-      if (
-        categories[1] &&
-        (!user.subscriptionEnd ||
-          (user.subscriptionEnd &&
-            moment(user.subscriptionEnd).format('YYYY-MM-DD') !==
-              moment(categories[1], 'YYYY-MM-DD').format('YYYY-MM-DD')))
-      ) {
-        user.subscriptionEnd = categories[1]
-        await user.save()
-
-        subscriber = true
-      }
-
-      if (user.subscriptionEnd && moment(user.subscriptionEnd).toDate() <= new Date()) {
-        subscriber = true
-      }
-
-      return {
-        id: user.id,
-        fullname: name,
-        amember_id: user.amemberId,
-        token,
-        subscriber,
-      }
+    return {
+      id: result.user.id,
+      fullname: name,
+      amember_id: result.user.amemberId,
+      token: (await auth.use('userApi').generate(result.user)).token,
+      subscriber: result.subscriber,
     }
   }
   public async register({ request, response, auth }: HttpContextContract) {
@@ -140,10 +158,16 @@ export default class AuthController {
 
     const [registered] = axiosResponse.data
 
-    const user = new User()
-    user.amemberId = registered.user_id
+    const user: User = await Database.transaction(async (trx) => {
+      const user = new User()
+      user.amemberId = registered.user_id
+      user.fullname = fullname
+      user.username = username
 
-    await user.save()
+      await user.useTransaction(trx).save()
+      await this._userLoginLog(user.id, trx)
+      return user
+    })
 
     return {
       id: user.id,
@@ -191,5 +215,15 @@ export default class AuthController {
     }
 
     return 'Token Revoked'
+  }
+
+  public async verify({ auth }: HttpContextContract) {
+    const result = await Database.transaction(async (trx) => {
+      const user = auth.use('userApi').user!
+      await this._userLoginLog(user.id, trx)
+      return user
+    })
+
+    return result
   }
 }
