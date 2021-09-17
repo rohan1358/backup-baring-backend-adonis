@@ -36,7 +36,7 @@ export default class StatsController {
     const { rows } = await Database.rawQuery(
       'SELECT COUNT(*) as total FROM (SELECT contents.id FROM read_logs LEFT JOIN babs ON babs.id=read_logs.bab_id LEFT JOIN contents ON contents.id=babs.content_id WHERE read_logs.user_id = :id GROUP BY contents.id) as data',
       {
-        id: auth.use('adminApi').user?.partnerId!,
+        id: user.id,
       }
     )
 
