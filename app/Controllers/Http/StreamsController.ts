@@ -2,6 +2,8 @@ import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import s3 from 'App/Helpers/s3'
 import Bab from 'App/Models/Bab'
+import { PassThrough } from 'stream'
+import sharp from 'sharp'
 
 import Content from 'App/Models/Content'
 
@@ -10,7 +12,16 @@ export default class StreamsController {
     const content = await Content.findByOrFail('cover', params.filename)
 
     const file = await s3.send(new GetObjectCommand({ Bucket: 'covers-01', Key: content.cover }))
-    return response.stream(file.Body)
+
+    const stream = new PassThrough()
+    const transform = sharp()
+      .resize(300, 300, {
+        fit: 'contain',
+      })
+      .webp()
+
+    file.Body.pipe(transform).pipe(stream)
+    return response.stream(stream)
   }
 
   public async streamSynopsis({ response, request, params }: HttpContextContract) {

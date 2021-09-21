@@ -6,12 +6,17 @@ import moment from 'moment'
 
 export default class StatsController {
   public async userLogin({ auth }: HttpContextContract) {
+    const role = parseInt(auth.use('adminApi').user?.role!) || 0
     const result: object = {}
     const { rows } = await Database.rawQuery(
-      'SELECT DATE(login_logs.created_at) as date,COUNT(*) as value FROM login_logs LEFT JOIN users ON users.id = login_logs.user_id WHERE users.partner_id=:id GROUP BY date ORDER BY date DESC',
-      {
-        id: auth.use('adminApi').user?.partnerId!,
-      }
+      'SELECT DATE(login_logs.created_at) as date,COUNT(*) as value FROM login_logs LEFT JOIN users ON users.id = login_logs.user_id' +
+        (role === 1 ? ' WHERE users.partner_id=:id' : '') +
+        ' GROUP BY date ORDER BY date DESC',
+      role === 1
+        ? {
+            id: auth.use('adminApi').user?.partnerId!,
+          }
+        : {}
     )
 
     for (let i = 9; i > 0; i--) {
@@ -26,10 +31,14 @@ export default class StatsController {
   }
 
   public async userReads({ auth, params, response }: HttpContextContract) {
-    const user = await User.query()
-      .where('id', params.id)
-      .andWhere('partner_id', auth.use('adminApi').user?.partnerId!)
-      .first()
+    const role = parseInt(auth.use('adminApi').user?.role!) || 0
+    const user =
+      role === 1
+        ? await User.query()
+            .where('id', params.id)
+            .andWhere('partner_id', auth.use('adminApi').user?.partnerId!)
+            .first()
+        : await User.query().where('id', params.id).first()
 
     if (!user) return response.notFound()
 
@@ -48,6 +57,8 @@ export default class StatsController {
       })
       .where('user_id', user.id)
       .orderBy('created_at', 'desc')
+      .limit(15)
+      .offset(0)
 
     return {
       fullname: user.fullname,
@@ -56,38 +67,79 @@ export default class StatsController {
     }
   }
 
-  public async mostActiveUser({ auth }: HttpContextContract) {
-    const month = moment().format('MM')
-    const year = moment().format('YYYY')
+  public async mostActiveUser({ request, auth }: HttpContextContract) {
+    const role = parseInt(auth.use('adminApi').user?.role!) || 0
+    const start = request.input('start')
+      ? moment(request.input('start'), 'YYYY-MM-DD').format('YYYY-MM-DD hh:mm:ss')
+      : moment().startOf('month').format('YYYY-MM-DD hh:mm:ss')
+    const end = request.input('end')
+      ? moment(request.input('end'), 'YYYY-MM-DD').format('YYYY-MM-DD hh:mm:ss')
+      : moment().endOf('month').format('YYYY-MM-DD hh:mm:ss')
     const { rows } = await Database.rawQuery(
-      'SELECT users.id,users.fullname,COUNT(*) as total FROM users INNER JOIN read_logs ON read_logs.user_id=users.id WHERE users.partner_id = :id AND EXTRACT(YEAR FROM read_logs.created_at) = :year AND EXTRACT(MONTH FROM read_logs.created_at) = :month GROUP BY users.id ORDER BY total DESC',
+      'SELECT users.id,users.fullname,COUNT(*) as total FROM users INNER JOIN read_logs ON read_logs.user_id=users.id WHERE' +
+        (role === 1 ? ' users.partner_id = :id AND' : '') +
+        ' read_logs.created_at >= :start AND read_logs.created_at <= :end GROUP BY users.id ORDER BY total DESC LIMIT 15 OFFSET 0',
       {
-        year,
-        month,
-        id: auth.use('adminApi').user?.partnerId!,
+        start,
+        end,
+        id: role === 1 ? auth.use('adminApi').user?.partnerId! : '',
       }
     )
 
     return rows
   }
 
-  public async mostReadBook({ auth }: HttpContextContract) {
+  public async mostReadBook({ request, auth }: HttpContextContract) {
+    const role = parseInt(auth.use('adminApi').user?.role!) || 0
+    const start = request.input('start')
+      ? moment(request.input('start'), 'YYYY-MM-DD').format('YYYY-MM-DD hh:mm:ss')
+      : moment().startOf('month').format('YYYY-MM-DD hh:mm:ss')
+    const end = request.input('end')
+      ? moment(request.input('end'), 'YYYY-MM-DD').format('YYYY-MM-DD hh:mm:ss')
+      : moment().endOf('month').format('YYYY-MM-DD hh:mm:ss')
+
     const { rows } = await Database.rawQuery(
-      'SELECT contents.id,contents.title,COUNT(*) as read FROM contents LEFT JOIN babs ON babs.content_id=contents.id INNER JOIN read_logs ON read_logs.bab_id=babs.id LEFT JOIN users ON users.id = read_logs.user_id WHERE users.partner_id = :id GROUP BY contents.id ORDER BY read DESC',
-      {
-        id: auth.use('adminApi').user?.partnerId!,
-      }
+      "SELECT contents.id,contents.title,CASE WHEN reads.total IS NULL THEN '0' ELSE reads.total END as read FROM contents LEFT JOIN (SELECT COUNT(*) as total,babs.content_id as content_id FROM read_logs LEFT JOIN babs ON babs.id=read_logs.bab_id LEFT OUTER JOIN users ON users.id=read_logs.user_id WHERE read_logs.created_at >= :start AND read_logs.created_at <= :end" +
+        (role === 1 ? ' AND users.partner_id=:id' : '') +
+        ' GROUP BY babs.content_id ) as reads ON reads.content_id=contents.id ORDER BY read DESC LIMIT 5 OFFSET 0',
+      role === 1
+        ? {
+            id: auth.use('adminApi').user?.partnerId!,
+            start,
+            end,
+          }
+        : {
+            start,
+            end,
+          }
     )
 
     return rows
   }
 
-  public async mostReadCategory({ auth }: HttpContextContract) {
+  public async mostReadCategory({ request, auth }: HttpContextContract) {
+    const role = parseInt(auth.use('adminApi').user?.role!) || 0
+    const start = request.input('start')
+      ? moment(request.input('start'), 'YYYY-MM-DD').format('YYYY-MM-DD hh:mm:ss')
+      : moment().startOf('month').format('YYYY-MM-DD hh:mm:ss')
+    const end = request.input('end')
+      ? moment(request.input('end'), 'YYYY-MM-DD').format('YYYY-MM-DD hh:mm:ss')
+      : moment().endOf('month').format('YYYY-MM-DD hh:mm:ss')
+
     const { rows } = await Database.rawQuery(
-      'SELECT categories.id,categories.name,COUNT(*) as read FROM category_content LEFT JOIN categories ON categories.id=category_content.category_id LEFT OUTER JOIN contents ON contents.id=category_content.content_id LEFT JOIN babs ON babs.content_id=contents.id INNER JOIN read_logs ON read_logs.bab_id=babs.id LEFT JOIN users ON users.id = read_logs.user_id WHERE users.partner_id = :id GROUP BY categories.id ORDER BY read DESC',
-      {
-        id: auth.use('adminApi').user?.partnerId!,
-      }
+      "SELECT categories.id,categories.name,CASE WHEN reads.total IS NULL THEN '0' ELSE reads.total END as read FROM categories LEFT JOIN (SELECT COUNT(*) as total,category_content.category_id as category_id FROM read_logs LEFT JOIN babs ON babs.id=read_logs.bab_id LEFT JOIN category_content ON category_content.content_id=babs.content_id LEFT OUTER JOIN users ON users.id=read_logs.user_id WHERE read_logs.created_at >= :start AND read_logs.created_at <= :end" +
+        (role === 1 ? ' AND users.partner_id=:id' : '') +
+        ' GROUP BY category_content.category_id ) as reads ON reads.category_id=categories.id ORDER BY read DESC LIMIT 5 OFFSET 0',
+      role === 1
+        ? {
+            id: auth.use('adminApi').user?.partnerId!,
+            start,
+            end,
+          }
+        : {
+            start,
+            end,
+          }
     )
 
     return rows
