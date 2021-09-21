@@ -75,14 +75,20 @@ export default class StatsController {
     const end = request.input('end')
       ? moment(request.input('end'), 'YYYY-MM-DD').format('YYYY-MM-DD hh:mm:ss')
       : moment().endOf('month').format('YYYY-MM-DD hh:mm:ss')
+
+    const limit = parseInt(request.input('per_page', '15'))
+    const offset = (parseInt(request.input('page', '1')) - 1) * limit
+
     const { rows } = await Database.rawQuery(
       'SELECT users.id,users.fullname,COUNT(*) as total FROM users INNER JOIN read_logs ON read_logs.user_id=users.id WHERE' +
         (role === 1 ? ' users.partner_id = :id AND' : '') +
-        ' read_logs.created_at >= :start AND read_logs.created_at <= :end GROUP BY users.id ORDER BY total DESC LIMIT 15 OFFSET 0',
+        ' read_logs.created_at >= :start AND read_logs.created_at <= :end GROUP BY users.id ORDER BY total DESC LIMIT :limit OFFSET :offset',
       {
         start,
         end,
         id: role === 1 ? auth.use('adminApi').user?.partnerId! : '',
+        limit,
+        offset,
       }
     )
 
@@ -98,19 +104,26 @@ export default class StatsController {
       ? moment(request.input('end'), 'YYYY-MM-DD').format('YYYY-MM-DD hh:mm:ss')
       : moment().endOf('month').format('YYYY-MM-DD hh:mm:ss')
 
+    const limit = parseInt(request.input('per_page', '5'))
+    const offset = (parseInt(request.input('page', '1')) - 1) * limit
+
     const { rows } = await Database.rawQuery(
       "SELECT contents.id,contents.title,CASE WHEN reads.total IS NULL THEN '0' ELSE reads.total END as read FROM contents LEFT JOIN (SELECT COUNT(*) as total,babs.content_id as content_id FROM read_logs LEFT JOIN babs ON babs.id=read_logs.bab_id LEFT OUTER JOIN users ON users.id=read_logs.user_id WHERE read_logs.created_at >= :start AND read_logs.created_at <= :end" +
         (role === 1 ? ' AND users.partner_id=:id' : '') +
-        ' GROUP BY babs.content_id ) as reads ON reads.content_id=contents.id ORDER BY read DESC LIMIT 5 OFFSET 0',
+        ' GROUP BY babs.content_id ) as reads ON reads.content_id=contents.id ORDER BY read DESC LIMIT :limit OFFSET :offset',
       role === 1
         ? {
             id: auth.use('adminApi').user?.partnerId!,
             start,
             end,
+            limit,
+            offset,
           }
         : {
             start,
             end,
+            limit,
+            offset,
           }
     )
 
@@ -126,19 +139,26 @@ export default class StatsController {
       ? moment(request.input('end'), 'YYYY-MM-DD').format('YYYY-MM-DD hh:mm:ss')
       : moment().endOf('month').format('YYYY-MM-DD hh:mm:ss')
 
+    const limit = parseInt(request.input('per_page', '5'))
+    const offset = (parseInt(request.input('page', '1')) - 1) * limit
+
     const { rows } = await Database.rawQuery(
       "SELECT categories.id,categories.name,CASE WHEN reads.total IS NULL THEN '0' ELSE reads.total END as read FROM categories LEFT JOIN (SELECT COUNT(*) as total,category_content.category_id as category_id FROM read_logs LEFT JOIN babs ON babs.id=read_logs.bab_id LEFT JOIN category_content ON category_content.content_id=babs.content_id LEFT OUTER JOIN users ON users.id=read_logs.user_id WHERE read_logs.created_at >= :start AND read_logs.created_at <= :end" +
         (role === 1 ? ' AND users.partner_id=:id' : '') +
-        ' GROUP BY category_content.category_id ) as reads ON reads.category_id=categories.id ORDER BY read DESC LIMIT 5 OFFSET 0',
+        ' GROUP BY category_content.category_id ) as reads ON reads.category_id=categories.id ORDER BY read DESC LIMIT :limit OFFSET :offset',
       role === 1
         ? {
             id: auth.use('adminApi').user?.partnerId!,
             start,
             end,
+            limit,
+            offset,
           }
         : {
             start,
             end,
+            limit,
+            offset,
           }
     )
 
