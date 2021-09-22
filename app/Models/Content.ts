@@ -14,6 +14,7 @@ import Category from './Category'
 import s3 from 'App/Helpers/s3'
 import { DeleteObjectCommand } from '@aws-sdk/client-s3'
 import Author from './Author'
+import Like from './Like'
 
 export default class Content extends BaseModel {
   @column({ isPrimary: true })
@@ -52,6 +53,9 @@ export default class Content extends BaseModel {
   @manyToMany(() => Author)
   public authors: ManyToMany<typeof Author>
 
+  @hasMany(() => Like)
+  public likes: HasMany<typeof Like>
+
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime
 
@@ -62,6 +66,7 @@ export default class Content extends BaseModel {
     return {
       babs_count: this.$extras.babs_count,
       total: this.$extras.total,
+      is_liked: this.$extras.is_liked,
     }
   }
 

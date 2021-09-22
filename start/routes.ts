@@ -36,14 +36,18 @@ Route.group(() => {
   }).prefix('/auth')
 
   Route.group(() => {
-    Route.get('/:id/detail', 'ContentsController.fullContent').where('id', {
-      match: /^[0-9]+$/,
-      cast: (id) => Number(id),
-    })
-    Route.get('/:id', 'ContentsController.rawContent').where('id', {
-      match: /^[0-9]+$/,
-      cast: (id) => Number(id),
-    })
+    Route.get('/:id/detail', 'ContentsController.fullContent')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware('auth:userApi,adminApi')
+    Route.get('/:id', 'ContentsController.rawContent')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware('auth:userApi,adminApi')
     Route.put('/:id', 'ContentsController.editContent')
       .where('id', {
         match: /^[0-9]+$/,
@@ -56,6 +60,18 @@ Route.group(() => {
         cast: (id) => Number(id),
       })
       .middleware(['auth:adminApi', 'adminRole:super'])
+    Route.post('/:id/like', 'ContentsController.like')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware('auth:userApi')
+    Route.post('/:id/unlike', 'ContentsController.unlike')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware('auth:userApi')
     Route.post('/:id', 'ContentsController.addBab')
       .where('id', {
         match: /^[0-9]+$/,
@@ -66,7 +82,7 @@ Route.group(() => {
       'auth:adminApi',
       'adminRole:super',
     ])
-    Route.get('/', 'ContentsController.index')
+    Route.get('/', 'ContentsController.index').middleware('auth:userApi,adminApi')
   }).prefix('/content')
 
   Route.group(() => {

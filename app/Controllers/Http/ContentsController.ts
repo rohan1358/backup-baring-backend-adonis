@@ -1,11 +1,13 @@
 import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { schema } from '@ioc:Adonis/Core/Validator'
+import Database from '@ioc:Adonis/Lucid/Database'
 import s3 from 'App/Helpers/s3'
 import Author from 'App/Models/Author'
 import Bab from 'App/Models/Bab'
 import Category from 'App/Models/Category'
 import Content from 'App/Models/Content'
+import Like from 'App/Models/Like'
 import cuid from 'cuid'
 import fs from 'fs'
 
@@ -123,20 +125,60 @@ export default class ContentsController {
       authors: await content.related('authors').query(),
     }
   }
-  public async index({ request }: HttpContextContract) {
-    const total = await Content.query().count('* as total')
+  public async index({ request, auth }: HttpContextContract) {
+    const q = request.input('q', '')
+    const liked = request.input('liked', '') ? true : false
+
+    const total = await Database.query()
+      .from((subquery) => {
+        subquery
+          .from('contents')
+          .select(
+            'contents.id',
+            'contents.title',
+            Database.from('likes')
+              .select(Database.raw(`CASE WHEN likes.id IS NULL THEN FALSE ELSE TRUE END as status`))
+              .whereColumn('likes.content_id', 'contents.id')
+              .andWhere('likes.user_id', auth.use('userApi').user?.id || 0)
+              .limit(1)
+              .as('is_liked')
+          )
+          .as('contents')
+      })
+      .whereRaw(
+        liked ? 'contents.is_liked = ?' : 'contents.title iLike ?',
+        liked ? ['TRUE'] : [`%${q}%`]
+      )
+      .count('* as total')
+
     const contents = await Content.query()
-      .select('id', 'title', 'cover', 'created_at')
+      .select(
+        'contents.id',
+        'contents.title',
+        'contents.cover',
+        'contents.created_at',
+        Database.raw(`CASE WHEN likes.id IS NULL THEN FALSE ELSE TRUE END as is_liked`)
+      )
       .withCount('babs')
       .preload('authors', (query) => {
         query.select('id', 'name')
       })
+      .leftJoin('likes', (query) => {
+        query
+          .on('likes.content_id', '=', 'contents.id')
+          .andOnVal('likes.user_id', auth.use('userApi').user?.id || 0)
+      })
+      .whereRaw(
+        liked
+          ? 'CASE WHEN likes.id IS NULL THEN FALSE ELSE TRUE END = ?'
+          : 'contents.title iLike ?',
+        liked ? ['TRUE'] : [`%${q}%`]
+      )
       .orderBy('created_at', 'desc')
       .forPage(request.input('page', 1), 20)
 
     const contentsJson = contents.map((content) => content.serialize())
-
-    return { ...total[0].toJSON(), contents: contentsJson }
+    return { ...total[0], contents: contentsJson }
   }
   public async editContent({ request, response, params }: HttpContextContract) {
     const content = await Content.findByOrFail('id', params.id)
@@ -363,5 +405,35 @@ export default class ContentsController {
     await content.delete()
 
     return content.toJSON()
+  }
+
+  public async like({ params, auth, response }: HttpContextContract) {
+    const content = await Content.findByOrFail('id', params.id)
+    const status = await content
+      .related('likes')
+      .query()
+      .where('user_id', auth.use('userApi').user?.id!)
+      .first()
+
+    if (!status) {
+      const like = new Like()
+      like.userId = auth.use('userApi').user?.id!
+      like.contentId = params.id
+      await like.save()
+
+      return like.toJSON()
+    } else {
+      return response.badRequest()
+    }
+  }
+
+  public async unlike({ params, auth }: HttpContextContract) {
+    const like = await Like.query()
+      .where('content_id', params.id)
+      .andWhere('user_id', auth.use('userApi').user?.id!)
+      .firstOrFail()
+
+    await like.delete()
+    return like.toJSON()
   }
 }

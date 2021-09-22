@@ -4,6 +4,7 @@ import Course from './Course'
 import Partner from './Partner'
 import LoginLog from './LoginLog'
 import ReadLog from './ReadLog'
+import Like from './Like'
 
 export default class User extends BaseModel {
   @column({ isPrimary: true })
@@ -37,6 +38,9 @@ export default class User extends BaseModel {
     foreignKey: 'mentorId',
   })
   public courses: HasMany<typeof Course>
+
+  @hasMany(() => Like)
+  public liked: HasMany<typeof Like>
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime
