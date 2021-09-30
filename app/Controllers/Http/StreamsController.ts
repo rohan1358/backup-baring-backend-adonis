@@ -6,12 +6,31 @@ import { PassThrough } from 'stream'
 import sharp from 'sharp'
 
 import Content from 'App/Models/Content'
+import Course from 'App/Models/Course'
 
 export default class StreamsController {
   public async streamCover({ params, response }: HttpContextContract) {
     const content = await Content.findByOrFail('cover', params.filename)
 
     const file = await s3.send(new GetObjectCommand({ Bucket: 'covers-01', Key: content.cover }))
+
+    const stream = new PassThrough()
+    const transform = sharp()
+      .resize(300, 300, {
+        fit: 'contain',
+      })
+      .webp()
+
+    file.Body.pipe(transform).pipe(stream)
+    return response.stream(stream)
+  }
+
+  public async streamCourseCover({ params, response }: HttpContextContract) {
+    const course = await Course.findByOrFail('cover', params.filename)
+
+    const file = await s3.send(
+      new GetObjectCommand({ Bucket: 'online-course-covers', Key: course.cover })
+    )
 
     const stream = new PassThrough()
     const transform = sharp()

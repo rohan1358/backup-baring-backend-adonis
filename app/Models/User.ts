@@ -1,10 +1,19 @@
+import {
+  BaseModel,
+  BelongsTo,
+  belongsTo,
+  column,
+  HasMany,
+  hasMany,
+  ManyToMany,
+  manyToMany,
+} from '@ioc:Adonis/Lucid/Orm'
 import { DateTime } from 'luxon'
-import { BaseModel, BelongsTo, belongsTo, column, HasMany, hasMany } from '@ioc:Adonis/Lucid/Orm'
 import Course from './Course'
-import Partner from './Partner'
-import LoginLog from './LoginLog'
-import ReadLog from './ReadLog'
 import Like from './Like'
+import LoginLog from './LoginLog'
+import Partner from './Partner'
+import ReadLog from './ReadLog'
 
 export default class User extends BaseModel {
   @column({ isPrimary: true })
@@ -34,13 +43,11 @@ export default class User extends BaseModel {
   @hasMany(() => ReadLog)
   public readLogs: HasMany<typeof ReadLog>
 
-  @hasMany(() => Course, {
-    foreignKey: 'mentorId',
-  })
-  public courses: HasMany<typeof Course>
-
   @hasMany(() => Like)
   public liked: HasMany<typeof Like>
+
+  @manyToMany(() => Course, { pivotTable: 'member_course' })
+  public courses: ManyToMany<typeof Course>
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime

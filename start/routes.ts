@@ -117,12 +117,39 @@ Route.group(() => {
 
   Route.group(() => {
     Route.get('/cover/:filename', 'StreamsController.streamCover')
+    Route.get('/course-cover/:filename', 'StreamsController.streamCourseCover')
     Route.get('/synopsis/:filename', 'StreamsController.streamSynopsis')
     Route.get('/bab/:filename', 'StreamsController.streamBab').as('streamBab')
   }).prefix('/stream')
 
   Route.group(() => {
-    Route.post('/', 'CoursesController.create').middleware(['auth:adminApi', 'adminRole:super'])
+    Route.put('/:id/mentor', 'CoursesController.changeMentor')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware(['auth:adminApi', 'adminRole:super'])
+    Route.put('/:id/cover', 'CoursesController.changeCover')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware(['auth:adminApi', 'adminRole:super'])
+
+    Route.post('/:id', 'SubjectsController.createWithoutParent')
+      .middleware(['auth:adminApi', 'adminRole:super'])
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+
+    Route.get('/:id', 'CoursesController.read')
+      .middleware('auth:userApi,adminApi')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+    Route.get('/', 'CoursesController.index').middleware('auth:userApi,adminApi')
   }).prefix('/course')
 
   Route.group(() => {
@@ -155,5 +182,38 @@ Route.group(() => {
 
   Route.group(() => {
     Route.post('/MTFhZ3VzdHVz', 'HooksController.updateUser')
+    Route.post('/YWtiYXJhZGl0YW1h', 'HooksController.productHook')
   }).prefix('/hook')
+
+  Route.group(() => {
+    Route.get('/', 'UsersController.index').middleware('auth:adminApi,userApi')
+  }).prefix('/user')
+
+  Route.group(() => {
+    Route.post('/:id', 'SubjectsController.createInParent')
+      .middleware(['auth:adminApi', 'adminRole:super'])
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+
+    Route.put('/:id', 'SubjectsController.edit')
+      .middleware(['auth:adminApi', 'adminRole:super'])
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+    Route.delete('/:id', 'SubjectsController.delete')
+      .middleware(['auth:adminApi', 'adminRole:super'])
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+    Route.get('/:id', 'SubjectsController.read')
+      .middleware('auth:adminApi,userApi')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+  }).prefix('/subject')
 }).prefix('/api')

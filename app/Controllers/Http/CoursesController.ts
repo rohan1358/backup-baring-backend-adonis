@@ -2,42 +2,57 @@ import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { schema } from '@ioc:Adonis/Core/Validator'
 import Database from '@ioc:Adonis/Lucid/Database'
 import Course from 'App/Models/Course'
-import User from 'App/Models/User'
 import { cuid } from '@ioc:Adonis/Core/Helpers'
-import fs from 'fs'
 import s3 from 'App/Helpers/s3'
-import { PutObjectCommand } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import fs from 'fs'
+import User from 'App/Models/User'
 
 export default class CoursesController {
-  public async create({ request }: HttpContextContract) {
-    const {
-      title,
-      description,
-      cover,
-      mentor: mentorId,
-      price,
-    } = await request.validate({
+  private _infiniteLoad(query) {
+    query.select('id', 'title').preload('childs', (query) => {
+      this._infiniteLoad(query)
+    })
+  }
+  public async index() {
+    const courses = await Course.query()
+      .preload('users', (query) => {
+        query.wherePivot('mentor', true)
+      })
+      .orderBy('created_at', 'desc')
+
+    return courses.map((course) => course.serialize())
+  }
+
+  public async read({ params }: HttpContextContract) {
+    const course = await Course.query()
+      .where('id', params.id)
+      .preload('users', (query) => {
+        query.wherePivot('mentor', true)
+      })
+      .preload('subjects', (query) => {
+        this._infiniteLoad(query)
+      })
+      .firstOrFail()
+
+    return course.toJSON()
+  }
+
+  public async changeCover({ request, params }: HttpContextContract) {
+    const { cover } = await request.validate({
       schema: schema.create({
-        title: schema.string(),
-        description: schema.string(),
-        cover: schema.file({ size: '3mb', extnames: ['jpg', 'png', 'jpeg'] }),
-        mentor: schema.number(),
-        price: schema.number(),
+        cover: schema.file({ size: '10mb', extnames: ['jpg', 'png', 'jpeg'] }),
       }),
     })
 
-    const mentor = await User.findByOrFail('id', mentorId)
-
-    const result = await Database.transaction(async (trx) => {
+    const result = Database.transaction(async (trx) => {
+      let deleteOld: string | null = null
+      const course = await Course.findByOrFail('id', params.id)
+      if (course.cover) {
+        deleteOld = course.cover
+      }
       const filename = `${cuid()}.${cover.extname}`
-      const course = new Course()
-
-      course.title = title
-      course.description = description
       course.cover = filename
-      course.price = price
-      course.mentorId = mentor.id
-
       await course.useTransaction(trx).save()
 
       await s3.send(
@@ -47,10 +62,37 @@ export default class CoursesController {
           Body: fs.createReadStream(cover.tmpPath!),
         })
       )
+      if (deleteOld) {
+        await s3.send(new DeleteObjectCommand({ Key: deleteOld, Bucket: 'online-course-covers' }))
+      }
 
       return course.toJSON()
     })
-
     return result
+  }
+
+  public async changeMentor({ request, params }: HttpContextContract) {
+    const course = await Course.findByOrFail('id', params.id)
+
+    const { mentor: mentorId } = await request.validate({
+      schema: schema.create({
+        mentor: schema.number(),
+      }),
+    })
+
+    const user = await User.findByOrFail('id', mentorId)
+    const mentor = await course.related('users').pivotQuery().where('mentor', true).first()
+
+    if (mentor && user.id !== mentor.id) {
+      await course.related('users').detach([mentor.id])
+    }
+
+    await course.related('users').attach({
+      [user.id]: {
+        mentor: true,
+      },
+    })
+
+    return course.toJSON()
   }
 }
