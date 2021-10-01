@@ -20,11 +20,9 @@ export default class StatsController {
     )
 
     for (let i = 9; i > 0; i--) {
-      result[moment().subtract(i, 'days').format('DD-MM-YYYY')] = 0
-    }
-
-    for (let row of rows) {
-      result[moment(row.date).format('DD-MM-YYYY')] = parseInt(row.value)
+      const current = moment().subtract(i, 'days').format('DD-MM-YYYY')
+      const data = rows.find((el) => moment(el.date).format('DD-MM-YYYY') === current)
+      result[current] = Number(data?.value || 0)
     }
 
     return result
@@ -80,9 +78,9 @@ export default class StatsController {
     const offset = (parseInt(request.input('page', '1')) - 1) * limit
 
     const { rows } = await Database.rawQuery(
-      'SELECT users.id,users.fullname,COUNT(*) as total FROM users INNER JOIN read_logs ON read_logs.user_id=users.id WHERE' +
-        (role === 1 ? ' users.partner_id = :id AND' : '') +
-        ' read_logs.created_at >= :start AND read_logs.created_at <= :end GROUP BY users.id ORDER BY total DESC LIMIT :limit OFFSET :offset',
+      "SELECT users.id,users.fullname,CASE WHEN logs.total IS NULL THEN '0' ELSE logs.total END as total FROM users LEFT JOIN (SELECT user_id,COUNT(*) as total FROM read_logs WHERE created_at >= :start AND created_at <= :end GROUP BY user_id) as logs ON logs.user_id = users.id" +
+        (role === 1 ? ' WHERE users.partner_id=:id' : '') +
+        ' ORDER BY logs.total OFFSET :offset LIMIT :limit',
       {
         start,
         end,
