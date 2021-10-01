@@ -51,8 +51,12 @@ export default class HooksController {
     return user.toJSON()
   }
 
-  public async productHook({ response }: HttpContextContract) {
-    const amemberId = 13
+  public async productHook({ request, response }: HttpContextContract) {
+    const amemberId = request.input('product_id', '')
+
+    if (!amemberId) {
+      return response.badRequest()
+    }
 
     let course = await Course.findBy('amember_id', amemberId)
 
