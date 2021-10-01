@@ -182,7 +182,7 @@ Route.group(() => {
 
   Route.group(() => {
     Route.post('/MTFhZ3VzdHVz', 'HooksController.updateUser')
-    Route.post('/YWtiYXJhZGl0YW1h', 'HooksController.productHook')
+    Route.get('/YWtiYXJhZGl0YW1h', 'HooksController.productHook')
   }).prefix('/hook')
 
   Route.group(() => {
