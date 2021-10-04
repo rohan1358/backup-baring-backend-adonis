@@ -8,6 +8,12 @@ import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import fs from 'fs'
 
 export default class SubjectsController {
+  private _infiniteLoad(query) {
+    query.select('id', 'title').preload('childs', (query) => {
+      this._infiniteLoad(query)
+    })
+  }
+
   private async _create({ params, request }: HttpContextContract, inParent: boolean = false) {
     const { title, body, video } = await request.validate({
       schema: schema.create({
@@ -32,7 +38,9 @@ export default class SubjectsController {
         subject.video = filename
       }
       if (inParent) {
+        const parent = await Subject.findByOrFail('id', params.id)
         subject.parentId = params.id
+        subject.courseId = parent.courseId
       } else {
         subject.courseId = params.id
       }
@@ -58,6 +66,7 @@ export default class SubjectsController {
   public async createInParent(ctx: HttpContextContract) {
     return await this._create(ctx, true)
   }
+
   public async createWithoutParent(ctx: HttpContextContract) {
     return await this._create(ctx, false)
   }
@@ -107,15 +116,42 @@ export default class SubjectsController {
     return result
   }
 
-  public async read({ params }: HttpContextContract) {
-    const subject = await Subject.query()
-      .where('id', params.id)
+  public async read({ params, auth }: HttpContextContract) {
+    const subjectQuery = Subject.query()
+      .select(
+        'subjects.*',
+        Database.raw(`CASE WHEN boosts.id IS NULL THEN FALSE ELSE TRUE END as is_boosted`)
+      )
+      .where('subjects.id', params.id)
       .preload('childs', (query) => {
+        this._infiniteLoad(query)
+      })
+      .preload('course', (query) => {
         query.select('id', 'title')
       })
-      .firstOrFail()
+      .leftOuterJoin('boosts', (query) => {
+        query
+          .on('boosts.subject_id', '=', 'subjects.id')
+          .andOnVal('boosts.user_id', auth.use('userApi').user?.id!)
+      })
+      .withCount('comments')
 
-    return subject.toJSON()
+    let subject = await subjectQuery.firstOrFail()
+    if (auth.use('userApi').isLoggedIn) {
+      subject = await subjectQuery
+        .andWhereHas('course', (query) => {
+          query.whereHas('users', (query) => {
+            query.where('users.id', auth.use('userApi').user?.id!)
+          })
+        })
+        .firstOrFail()
+    }
+
+    return {
+      ...subject.toJSON(),
+      comments_count: subject.$extras.comments_count,
+      is_boosted: subject.$extras.is_boosted,
+    }
   }
 
   public async delete({ params }: HttpContextContract) {

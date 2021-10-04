@@ -9,10 +9,13 @@ import fs from 'fs'
 import User from 'App/Models/User'
 
 export default class CoursesController {
-  private _infiniteLoad(query) {
+  private _infiniteLoad(query, first = false) {
     query.select('id', 'title').preload('childs', (query) => {
       this._infiniteLoad(query)
     })
+    if (first) {
+      query.whereDoesntHave('parent')
+    }
   }
   public async index() {
     const courses = await Course.query()
@@ -24,18 +27,33 @@ export default class CoursesController {
     return courses.map((course) => course.serialize())
   }
 
-  public async read({ params }: HttpContextContract) {
-    const course = await Course.query()
-      .where('id', params.id)
+  public async read({ params, auth }: HttpContextContract) {
+    const courseQuery = Course.query()
+      .where('courses.id', params.id)
       .preload('users', (query) => {
         query.wherePivot('mentor', true)
       })
       .preload('subjects', (query) => {
-        this._infiniteLoad(query)
+        this._infiniteLoad(query, true)
       })
-      .firstOrFail()
 
-    return course.toJSON()
+    let course = await courseQuery.firstOrFail()
+
+    if (auth.use('userApi').isLoggedIn) {
+      course = await courseQuery
+        .select(
+          'courses.*',
+          Database.raw(`CASE WHEN member_course.id IS NULL THEN FALSE ELSE TRUE END as is_member`)
+        )
+        .leftOuterJoin('member_course', (query) => {
+          query
+            .on('member_course.course_id', '=', 'courses.id')
+            .andOnVal('member_course.user_id', auth.use('userApi').user?.id!)
+        })
+        .firstOrFail()
+    }
+
+    return { ...course.toJSON(), is_member: course.$extras.is_member }
   }
 
   public async changeCover({ request, params }: HttpContextContract) {
@@ -94,5 +112,28 @@ export default class CoursesController {
     })
 
     return course.toJSON()
+  }
+
+  public async join({ params, auth, response }: HttpContextContract) {
+    let course = await Course.query()
+      .where('courses.id', params.id)
+      .andWhereHas('users', (query) => {
+        query.where('users.id', auth.use('userApi').user?.id!)
+      })
+      .first()
+
+    if (course) {
+      return response.badRequest()
+    }
+
+    course = await Course.findByOrFail('id', params.id)
+
+    await course.related('users').attach({
+      [auth.use('userApi').user?.id!]: {
+        mentor: false,
+      },
+    })
+
+    return 'Join success'
   }
 }

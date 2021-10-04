@@ -1,4 +1,4 @@
-import { DateTime } from 'luxon'
+import { DeleteObjectCommand } from '@aws-sdk/client-s3'
 import {
   afterDelete,
   BaseModel,
@@ -9,9 +9,11 @@ import {
   HasMany,
   hasMany,
 } from '@ioc:Adonis/Lucid/Orm'
-import Course from './Course'
 import s3 from 'App/Helpers/s3'
-import { DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { DateTime } from 'luxon'
+import Boost from './Boost'
+import Comment from './Comment'
+import Course from './Course'
 
 export default class Subject extends BaseModel {
   @column({ isPrimary: true })
@@ -27,7 +29,7 @@ export default class Subject extends BaseModel {
   public video: string
 
   @column()
-  public parentId: number
+  public parentId: number | null
 
   @column()
   public courseId: number
@@ -40,6 +42,12 @@ export default class Subject extends BaseModel {
 
   @belongsTo(() => Course)
   public course: BelongsTo<typeof Course>
+
+  @hasMany(() => Comment)
+  public comments: HasMany<typeof Comment>
+
+  @hasMany(() => Boost)
+  public boosts: HasMany<typeof Boost>
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime

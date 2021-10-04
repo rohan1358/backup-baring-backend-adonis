@@ -1,21 +1,14 @@
 import BaseSchema from '@ioc:Adonis/Lucid/Schema'
 
-export default class Subjects extends BaseSchema {
-  protected tableName = 'subjects'
+export default class Boosts extends BaseSchema {
+  protected tableName = 'boosts'
 
   public async up() {
     this.schema.createTable(this.tableName, (table) => {
       table.increments('id').primary()
-      table.string('title')
-      table.text('body').nullable()
-      table.string('video').nullable()
-      table
-        .integer('parent_id')
-        .nullable()
-        .unsigned()
-        .references('subjects.id')
-        .onDelete('set null')
-      table.integer('course_id').nullable().unsigned().references('courses.id').onDelete('set null')
+      table.integer('user_id').unsigned().references('users.id').onDelete('cascade')
+      table.integer('subject_id').unsigned().references('subjects.id').onDelete('cascade')
+      table.string('body')
 
       /**
        * Uses timestamptz for PostgreSQL and DATETIME2 for MSSQL

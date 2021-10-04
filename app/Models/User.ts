@@ -9,6 +9,8 @@ import {
   manyToMany,
 } from '@ioc:Adonis/Lucid/Orm'
 import { DateTime } from 'luxon'
+import Boost from './Boost'
+import Comment from './Comment'
 import Course from './Course'
 import Like from './Like'
 import LoginLog from './LoginLog'
@@ -48,6 +50,12 @@ export default class User extends BaseModel {
 
   @manyToMany(() => Course, { pivotTable: 'member_course' })
   public courses: ManyToMany<typeof Course>
+
+  @hasMany(() => Comment)
+  public comments: HasMany<typeof Comment>
+
+  @hasMany(() => Boost)
+  public boosts: HasMany<typeof Boost>
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime

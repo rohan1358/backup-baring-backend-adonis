@@ -123,6 +123,13 @@ Route.group(() => {
   }).prefix('/stream')
 
   Route.group(() => {
+    Route.post('/join/:id', 'CoursesController.join')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware('auth:userApi')
+
     Route.put('/:id/mentor', 'CoursesController.changeMentor')
       .where('id', {
         match: /^[0-9]+$/,
@@ -216,4 +223,46 @@ Route.group(() => {
         cast: (id) => Number(id),
       })
   }).prefix('/subject')
+
+  Route.group(() => {
+    Route.get('/reply/:id', 'CommentsController.readReplies')
+      .middleware('auth:userApi')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+    Route.post('/reply/:id', 'CommentsController.reply')
+      .middleware('auth:userApi')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+    Route.post('/:id', 'CommentsController.create')
+      .middleware('auth:userApi')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+    Route.get('/:id', 'CommentsController.index')
+      .middleware('auth:userApi')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+  }).prefix('/comment')
+
+  Route.group(() => {
+    Route.post('/:id', 'BoostsController.create')
+      .middleware('auth:userApi')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+    Route.get('/:id', 'BoostsController.index')
+      .middleware('auth:userApi')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+  }).prefix('/boost')
 }).prefix('/api')
