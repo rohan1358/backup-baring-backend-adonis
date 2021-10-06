@@ -129,7 +129,7 @@ export default class ContentsController {
     const q = request.input('q', '')
     const liked = request.input('liked', '') ? true : false
 
-    const total = await Database.query()
+    let total = Database.query()
       .from((subquery) => {
         subquery
           .from('contents')
@@ -145,13 +145,9 @@ export default class ContentsController {
           )
           .as('contents')
       })
-      .whereRaw(
-        liked ? 'contents.is_liked = ?' : 'contents.title iLike ?',
-        liked ? ['TRUE'] : [`%${q}%`]
-      )
       .count('* as total')
 
-    const contents = await Content.query()
+    let contents = Content.query()
       .select(
         'contents.id',
         'contents.title',
@@ -168,18 +164,23 @@ export default class ContentsController {
           .on('likes.content_id', '=', 'contents.id')
           .andOnVal('likes.user_id', auth.use('userApi').user?.id || 0)
       })
-      .whereRaw(
-        liked
-          ? 'CASE WHEN likes.id IS NULL THEN FALSE ELSE TRUE END = ?'
-          : 'contents.title iLike ?',
-        liked ? ['TRUE'] : [`%${q}%`]
-      )
       .orderBy('created_at', 'desc')
-      .forPage(request.input('page', 1), 20)
+      .forPage(request.input('page', 1), 12)
 
-    const contentsJson = contents.map((content) => content.serialize())
-    return { ...total[0], contents: contentsJson }
+    if (liked) {
+      total = total.where('contents.is_liked', true)
+      contents = contents.whereRaw('CASE WHEN likes.id IS NULL THEN FALSE ELSE TRUE END = ?', [
+        'TRUE',
+      ])
+    } else {
+      total = total.where('contents.title', 'iLike', `%${q}%`)
+      contents = contents.where('contents.title', 'iLike', `%${q}%`)
+    }
+
+    const contentsJson = (await contents).map((content) => content.serialize())
+    return { ...(await total)[0], contents: contentsJson }
   }
+
   public async editContent({ request, response, params }: HttpContextContract) {
     const content = await Content.findByOrFail('id', params.id)
 

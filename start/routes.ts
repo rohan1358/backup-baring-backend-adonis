@@ -108,6 +108,9 @@ Route.group(() => {
   }).prefix('/bab')
 
   Route.group(() => {
+    Route.get('/content', 'CategoriesController.contentGroupByCategory').middleware(
+      'auth:userApi,adminApi'
+    )
     Route.get('/', 'CategoriesController.index')
   }).prefix('/categories')
 

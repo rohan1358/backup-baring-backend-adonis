@@ -144,6 +144,14 @@ export default class SubjectsController {
             query.where('users.id', auth.use('userApi').user?.id!)
           })
         })
+        .select(
+          Database.raw(`CASE WHEN member_course.id IS NULL THEN FALSE ELSE TRUE END as is_member`)
+        )
+        .leftOuterJoin('member_course', (query) => {
+          query
+            .on('member_course.course_id', '=', 'subjects.course_id')
+            .andOnVal('member_course.user_id', auth.use('userApi').user?.id!)
+        })
         .firstOrFail()
     }
 
@@ -151,6 +159,7 @@ export default class SubjectsController {
       ...subject.toJSON(),
       comments_count: subject.$extras.comments_count,
       is_boosted: subject.$extras.is_boosted,
+      is_member: subject.$extras.is_member,
     }
   }
 
