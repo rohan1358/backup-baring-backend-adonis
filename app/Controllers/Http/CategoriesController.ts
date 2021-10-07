@@ -12,7 +12,15 @@ export default class CategoriesController {
 
   public async contentGroupByCategory({ auth }: HttpContextContract) {
     const categories = await Category.query()
-      .preload('contents', (query) => {
+      .withCount('contents')
+      .has('contents')
+      .orderBy('contents_count', 'desc')
+      .limit(4)
+
+    let response: Object[] = []
+
+    for (let category of categories) {
+      await category.load('contents', (query) => {
         query
           .select(
             'contents.id',
@@ -32,10 +40,10 @@ export default class CategoriesController {
           })
           .orderBy('created_at', 'desc')
           .limit(6)
-          .offset(0)
       })
-      .has('contents')
+      response.push(category.serialize())
+    }
 
-    return categories.map((categories) => categories.serialize())
+    return response
   }
 }
