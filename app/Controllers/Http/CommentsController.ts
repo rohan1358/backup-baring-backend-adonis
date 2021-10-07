@@ -35,7 +35,7 @@ export default class CommentsController {
       .leftJoin('member_course', (query) => {
         query
           .on('member_course.course_id', '=', 'courses.id')
-          .andOnVal('member_course.user_id', auth.use('userApi').user?.id!)
+          .andOn('member_course.user_id', 'users.id')
           .andOnVal('member_course.mentor', true)
       })
       .orderBy('created_at', 'asc')
@@ -110,7 +110,7 @@ export default class CommentsController {
       .leftJoin('member_course', (query) => {
         query
           .on('member_course.course_id', '=', 'courses.id')
-          .andOnVal('member_course.user_id', auth.use('userApi').user?.id!)
+          .andOn('member_course.user_id', 'users.id')
           .andOnVal('member_course.mentor', true)
       })
       .orderBy('created_at', 'asc')
