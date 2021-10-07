@@ -102,7 +102,7 @@ export default class CoursesController {
     const mentor = await course.related('users').pivotQuery().where('mentor', true).first()
 
     if (mentor && user.id !== mentor.id) {
-      await course.related('users').detach([mentor.id])
+      await course.related('users').detach(mentor.id)
     }
 
     await course.related('users').attach({
