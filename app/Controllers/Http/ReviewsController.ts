@@ -6,6 +6,7 @@ import { schema, rules } from '@ioc:Adonis/Core/Validator'
 export default class ReviewsController {
   public async create({ params, auth, response, request }: HttpContextContract) {
     const course = await Course.query()
+      .select('courses.*')
       .leftJoin('member_course', 'member_course.course_id', '=', 'courses.id')
       .where('courses.id', params.id)
       .where('courses.id', params.id)
@@ -30,8 +31,8 @@ export default class ReviewsController {
     })
 
     review = new Review()
-    review.userId = auth.use('userApi').user?.id!
-    review.courseId = course.id
+    review.userId = Number(auth.use('userApi').user?.id!)
+    review.courseId = Number(course.id)
     review.star = star
     review.body = body
 
