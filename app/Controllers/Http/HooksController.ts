@@ -40,9 +40,15 @@ export default class HooksController {
     user.fullname = fullname
 
     if (groups.length) {
-      const partner = await Partner.findBy('amember_group', groups[0])
-      if (partner) {
-        user.partnerId = partner.id
+      for (let group of groups) {
+        if (Number(group) === 4) {
+          user.isMentor = true
+        } else {
+          const partner = await Partner.findBy('amember_group', groups[0])
+          if (partner) {
+            user.partnerId = partner.id
+          }
+        }
       }
     }
 

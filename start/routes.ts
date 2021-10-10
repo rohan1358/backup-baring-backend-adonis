@@ -133,8 +133,19 @@ Route.group(() => {
       })
       .middleware('auth:userApi')
 
-    Route.put('/:id/mentor', 'CoursesController.changeMentor')
+    Route.post('/:id/mentor', 'CoursesController.addMentor')
       .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware(['auth:adminApi', 'adminRole:super'])
+
+    Route.delete('/:id/mentor/:userId', 'CoursesController.deleteMentor')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .where('userId', {
         match: /^[0-9]+$/,
         cast: (id) => Number(id),
       })
@@ -268,4 +279,19 @@ Route.group(() => {
         cast: (id) => Number(id),
       })
   }).prefix('/boost')
+
+  Route.group(() => {
+    Route.post('/:id', 'ReviewsController.create')
+      .middleware('auth:userApi')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+    Route.get('/:id', 'ReviewsController.index')
+      .middleware('auth:userApi')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+  }).prefix('/review')
 }).prefix('/api')

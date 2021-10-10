@@ -43,17 +43,31 @@ export default class CoursesController {
       course = await courseQuery
         .select(
           'courses.*',
-          Database.raw(`CASE WHEN member_course.id IS NULL THEN FALSE ELSE TRUE END as is_member`)
+          Database.raw(`CASE WHEN member_course.id IS NULL THEN FALSE ELSE TRUE END as is_member`),
+          Database.raw(
+            `CASE WHEN member_course.mentor = TRUE THEN TRUE ELSE FALSE END as is_mentor`
+          ),
+          Database.raw(`CASE WHEN reviews.id IS NULL THEN FALSE ELSE TRUE END as is_reviewed`)
         )
         .leftOuterJoin('member_course', (query) => {
           query
             .on('member_course.course_id', '=', 'courses.id')
             .andOnVal('member_course.user_id', auth.use('userApi').user?.id!)
         })
+        .leftOuterJoin('reviews', (query) => {
+          query
+            .on('reviews.course_id', '=', 'courses.id')
+            .andOnVal('reviews.user_id', auth.use('userApi').user?.id!)
+        })
         .firstOrFail()
     }
 
-    return { ...course.toJSON(), is_member: course.$extras.is_member }
+    return {
+      ...course.toJSON(),
+      is_member: course.$extras.is_member,
+      is_mentor: course.$extras.is_mentor,
+      is_reviewed: course.$extras.is_reviewed,
+    }
   }
 
   public async changeCover({ request, params }: HttpContextContract) {
@@ -89,7 +103,7 @@ export default class CoursesController {
     return result
   }
 
-  public async changeMentor({ request, params }: HttpContextContract) {
+  public async addMentor({ request, params }: HttpContextContract) {
     const course = await Course.findByOrFail('id', params.id)
 
     const { mentor: mentorId } = await request.validate({
@@ -102,7 +116,7 @@ export default class CoursesController {
     const mentor = await course.related('users').pivotQuery().where('mentor', true).first()
 
     if (mentor && user.id !== mentor.id) {
-      await course.related('users').detach(mentor.id)
+      await course.related('users').detach([mentor.id])
     }
 
     await course.related('users').attach({
@@ -110,6 +124,23 @@ export default class CoursesController {
         mentor: true,
       },
     })
+
+    return course.toJSON()
+  }
+
+  public async deleteMentor({ params }: HttpContextContract) {
+    const course = await Course.findByOrFail('id', params.id)
+    const user = await User.findByOrFail('id', params.userId)
+    const mentor = await user
+      .related('courses')
+      .pivotQuery()
+      .where('mentor', true)
+      .andWhere('course_id', course.id)
+      .firstOrFail()
+
+    if (mentor) {
+      await course.related('users').detach([user.id])
+    }
 
     return course.toJSON()
   }

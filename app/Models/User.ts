@@ -16,6 +16,7 @@ import Like from './Like'
 import LoginLog from './LoginLog'
 import Partner from './Partner'
 import ReadLog from './ReadLog'
+import Review from './Review'
 
 export default class User extends BaseModel {
   @column({ isPrimary: true })
@@ -35,6 +36,9 @@ export default class User extends BaseModel {
 
   @column()
   public partnerId: number
+
+  @column()
+  public isMentor: boolean
 
   @belongsTo(() => Partner)
   public partner: BelongsTo<typeof Partner>
@@ -56,6 +60,9 @@ export default class User extends BaseModel {
 
   @hasMany(() => Boost)
   public boosts: HasMany<typeof Boost>
+
+  @hasMany(() => Review)
+  public reviews: HasMany<typeof Review>
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime

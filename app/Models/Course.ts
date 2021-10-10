@@ -13,6 +13,7 @@ import User from './User'
 import Subject from './Subject'
 import s3 from 'App/Helpers/s3'
 import { DeleteObjectCommand } from '@aws-sdk/client-s3'
+import Review from './Review'
 
 export default class Course extends BaseModel {
   @column({ isPrimary: true })
@@ -45,6 +46,9 @@ export default class Course extends BaseModel {
 
   @hasMany(() => Subject)
   public subjects: HasMany<typeof Subject>
+
+  @hasMany(() => Review)
+  public reviews: HasMany<typeof Review>
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime
