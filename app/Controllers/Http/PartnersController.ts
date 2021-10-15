@@ -1,19 +1,36 @@
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
-import { schema } from '@ioc:Adonis/Core/Validator'
+import { validator, schema } from '@ioc:Adonis/Core/Validator'
 import Database from '@ioc:Adonis/Lucid/Database'
 import Admin from 'App/Models/Admin'
 import Partner from 'App/Models/Partner'
 import Hash from '@ioc:Adonis/Core/Hash'
 
 export default class PartnersController {
-  public async index() {
-    const partners = await Partner.query().preload('admins', (query) => {
-      query.select('username')
+  public async index({ request }: HttpContextContract) {
+    const { page } = await validator.validate({
+      schema: schema.create({
+        page: schema.number.optional(),
+      }),
+      data: request.all(),
     })
+
+    const limit = 10
+    const offset = (page ? page - 1 : 0) * limit
+
+    const total = await Partner.query().count('* as total')
+    const partners = await Partner.query()
+      .preload('admins', (query) => {
+        query.select('username')
+      })
+      .limit(limit)
+      .offset(offset)
 
     const json = partners.map((partner) => partner.serialize())
 
-    return json
+    return {
+      total: Math.ceil(Number(total[0]?.$extras.total || '0') / limit),
+      data: json,
+    }
   }
 
   public async edit({ request, params, response }: HttpContextContract) {

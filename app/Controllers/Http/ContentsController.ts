@@ -1,6 +1,6 @@
 import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
-import { schema } from '@ioc:Adonis/Core/Validator'
+import { validator, schema } from '@ioc:Adonis/Core/Validator'
 import Database from '@ioc:Adonis/Lucid/Database'
 import s3 from 'App/Helpers/s3'
 import Author from 'App/Models/Author'
@@ -126,6 +126,13 @@ export default class ContentsController {
     }
   }
   public async index({ request, auth }: HttpContextContract) {
+    const { page } = await validator.validate({
+      schema: schema.create({
+        page: schema.number.optional(),
+      }),
+      data: request.all(),
+    })
+    const limit = 20
     const q = request.input('q', '')
     const liked = request.input('liked', '') ? true : false
 
@@ -165,7 +172,8 @@ export default class ContentsController {
           .andOnVal('likes.user_id', auth.use('userApi').user?.id || 0)
       })
       .orderBy('created_at', 'desc')
-      .forPage(request.input('page', 1), 12)
+      .offset(page ? (page - 1) * 1 : 0)
+      .limit(limit)
 
     if (liked) {
       total = total.where('contents.is_liked', true)
@@ -178,7 +186,10 @@ export default class ContentsController {
     }
 
     const contentsJson = (await contents).map((content) => content.serialize())
-    return { ...(await total)[0], contents: contentsJson }
+    return {
+      total: Math.ceil(Number((await total)[0].total || '0') / limit),
+      data: contentsJson,
+    }
   }
 
   public async editContent({ request, response, params }: HttpContextContract) {

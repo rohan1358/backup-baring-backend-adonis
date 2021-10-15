@@ -1,5 +1,5 @@
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
-import { schema } from '@ioc:Adonis/Core/Validator'
+import { schema, validator } from '@ioc:Adonis/Core/Validator'
 import Database from '@ioc:Adonis/Lucid/Database'
 import Course from 'App/Models/Course'
 import { cuid } from '@ioc:Adonis/Core/Helpers'
@@ -17,14 +17,30 @@ export default class CoursesController {
       query.whereDoesntHave('parent')
     }
   }
-  public async index() {
+  public async index({ request }: HttpContextContract) {
+    const { page } = await validator.validate({
+      schema: schema.create({
+        page: schema.number.optional(),
+      }),
+      data: request.all(),
+    })
+
+    const limit = 10
+    const offset = (page ? page - 1 : 0) * limit
+
+    const total = await Course.query().count('* as total')
     const courses = await Course.query()
       .preload('users', (query) => {
         query.wherePivot('mentor', true)
       })
       .orderBy('created_at', 'desc')
+      .limit(limit)
+      .offset(offset)
 
-    return courses.map((course) => course.serialize())
+    return {
+      total: Math.ceil(Number(total[0]?.$extras.total || '0') / limit),
+      data: courses.map((course) => course.serialize()),
+    }
   }
 
   public async read({ params, auth }: HttpContextContract) {
