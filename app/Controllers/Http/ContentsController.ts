@@ -133,6 +133,7 @@ export default class ContentsController {
       data: request.all(),
     })
     const limit = 20
+    const offset = (page ? page - 1 : 0) * limit
     const q = request.input('q', '')
     const liked = request.input('liked', '') ? true : false
 
@@ -172,7 +173,7 @@ export default class ContentsController {
           .andOnVal('likes.user_id', auth.use('userApi').user?.id || 0)
       })
       .orderBy('created_at', 'desc')
-      .offset(page ? (page - 1) * 1 : 0)
+      .offset(offset)
       .limit(limit)
 
     if (liked) {

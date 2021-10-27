@@ -121,6 +121,7 @@ Route.group(() => {
   Route.group(() => {
     Route.get('/cover/:filename', 'StreamsController.streamCover')
     Route.get('/course-cover/:filename', 'StreamsController.streamCourseCover')
+    Route.get('/product-cover/:filename', 'StreamsController.streamProductCover')
     Route.get('/synopsis/:filename', 'StreamsController.streamSynopsis')
     Route.get('/bab/:filename', 'StreamsController.streamBab').as('streamBab')
   }).prefix('/stream')
@@ -294,4 +295,29 @@ Route.group(() => {
         cast: (id) => Number(id),
       })
   }).prefix('/review')
+
+  Route.group(() => {
+    Route.put('/:id/cover', 'ProductsController.changeCover')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware(['auth:adminApi', 'adminRole:super'])
+    Route.get('/:id', 'ProductsController.read')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware('auth:userApi,adminApi')
+    Route.get('/', 'ProductsController.index').middleware('auth:userApi,adminApi')
+  }).prefix('/product')
+
+  Route.group(() => {
+    Route.post('/increase', 'CartsController.increase')
+    Route.post('/decrease', 'CartsController.decrease')
+    Route.post('/reset', 'CartsController.reset')
+    Route.get('/', 'CartsController.index')
+  })
+    .prefix('/cart')
+    .middleware('auth:userApi')
 }).prefix('/api')

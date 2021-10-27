@@ -2,6 +2,7 @@ import Env from '@ioc:Adonis/Core/Env'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { schema } from '@ioc:Adonis/Core/Validator'
 import Course from 'App/Models/Course'
+import Product from 'App/Models/Product'
 import Partner from 'App/Models/Partner'
 import User from 'App/Models/User'
 import axios from 'axios'
@@ -64,8 +65,6 @@ export default class HooksController {
       return response.badRequest()
     }
 
-    let course = await Course.findBy('amember_id', amemberId)
-
     let responseAxios
     try {
       const getData = (
@@ -85,22 +84,36 @@ export default class HooksController {
     }
 
     const { title, description, nested } = responseAxios
+    const category = nested['product-product-category'][0]?.product_category_id
 
-    if (nested['product-product-category'][0]?.product_category_id !== '2') {
-      return response.badRequest()
+    if (category === '2') {
+      let course = await Course.findBy('amember_id', amemberId)
+      if (!course) {
+        course = new Course()
+        course.amemberId = amemberId
+      }
+
+      course.title = title
+      course.description = description
+      course.price = parseInt(nested['billing-plans'][0]?.first_price || '0')
+
+      await course.save()
+
+      return course.toJSON()
+    } else if (category === '3') {
+      let product = await Product.findBy('amember_id', amemberId)
+      if (!product) {
+        product = new Product()
+        product.amemberId = amemberId
+      }
+
+      product.title = title
+      product.description = description
+      product.price = parseInt(nested['billing-plans'][0]?.first_price || '0')
+
+      await product.save()
+
+      return product.toJSON()
     }
-
-    if (!course) {
-      course = new Course()
-      course.amemberId = amemberId
-    }
-
-    course.title = title
-    course.description = description
-    course.price = parseInt(nested['billing-plans'][0]?.first_price || '0')
-
-    await course.save()
-
-    return course.toJSON()
   }
 }

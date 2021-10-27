@@ -94,9 +94,9 @@ export default class StatsController {
     }
 
     const { rows } = await Database.rawQuery(
-      "SELECT users.id,users.fullname,CASE WHEN logs.total IS NULL THEN '0' ELSE logs.total END as total FROM users LEFT JOIN (SELECT user_id,COUNT(*) as total FROM read_logs WHERE created_at >= :start AND created_at <= :end GROUP BY user_id) as logs ON logs.user_id = users.id" +
+      "SELECT users.id,users.fullname,CASE WHEN logs.read_total IS NULL THEN '0' ELSE logs.read_total END as total FROM users LEFT JOIN (SELECT user_id,COUNT(*) as read_total FROM read_logs WHERE created_at >= :start AND created_at <= :end GROUP BY user_id) as logs ON logs.user_id = users.id" +
         (role === 1 ? ' WHERE users.partner_id=:id' : '') +
-        ' ORDER BY logs.total DESC OFFSET :offset LIMIT :limit',
+        ' ORDER BY total DESC OFFSET :offset LIMIT :limit',
       {
         start,
         end,

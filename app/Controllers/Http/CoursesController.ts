@@ -129,17 +129,22 @@ export default class CoursesController {
     })
 
     const user = await User.findByOrFail('id', mentorId)
-    const mentor = await course.related('users').pivotQuery().where('mentor', true).first()
-
-    if (mentor && user.id !== mentor.id) {
-      await course.related('users').detach([mentor.id])
+    const mentor = await course.related('users').pivotQuery().where('user_id', user.id).first()
+    if (mentor) {
+      await Database.rawQuery(
+        'UPDATE member_course SET mentor=TRUE WHERE course_id=:course AND user_id=:user',
+        {
+          course: course.id,
+          user: user.id,
+        }
+      )
+    } else {
+      await course.related('users').attach({
+        [user.id]: {
+          mentor: true,
+        },
+      })
     }
-
-    await course.related('users').attach({
-      [user.id]: {
-        mentor: true,
-      },
-    })
 
     return course.toJSON()
   }
