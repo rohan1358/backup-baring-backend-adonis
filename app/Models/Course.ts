@@ -41,6 +41,16 @@ export default class Course extends BaseModel {
   @column()
   public amemberId: number
 
+  @column({
+    serialize: (value: string) => {
+      if (!value) {
+        return null
+      }
+      return '/api/stream/course-pdf/' + value
+    },
+  })
+  public pdf: string
+
   @manyToMany(() => User, { pivotTable: 'member_course', pivotColumns: ['mentor'] })
   public users: ManyToMany<typeof User>
 

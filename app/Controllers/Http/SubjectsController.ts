@@ -15,7 +15,7 @@ export default class SubjectsController {
   }
 
   private async _create({ params, request }: HttpContextContract, inParent: boolean = false) {
-    const { title, body, video } = await request.validate({
+    const { title, body, video, pdf } = await request.validate({
       schema: schema.create({
         title: schema.string(),
         body: schema.string.optional(),
@@ -23,11 +23,16 @@ export default class SubjectsController {
           size: '1024mb',
           extnames: ['mp4', 'mkv'],
         }),
+        pdf: schema.file.optional({
+          size: '10mb',
+          extnames: ['pdf'],
+        }),
       }),
     })
 
     const result = await Database.transaction(async (trx) => {
       const filename = `${cuid()}.${video?.extname}`
+      const pdfFilename = `${cuid()}.${pdf?.extname}`
 
       const subject = new Subject()
       subject.title = title
@@ -36,6 +41,9 @@ export default class SubjectsController {
       }
       if (video) {
         subject.video = filename
+      }
+      if (pdf) {
+        subject.pdf = pdfFilename
       }
       if (inParent) {
         const parent = await Subject.findByOrFail('id', params.id)
@@ -53,6 +61,15 @@ export default class SubjectsController {
             Key: filename,
             Bucket: 'video-online-course',
             Body: fs.createReadStream(video.tmpPath!),
+          })
+        )
+      }
+      if (pdf) {
+        await s3.send(
+          new PutObjectCommand({
+            Key: pdfFilename,
+            Bucket: 'pdf-course',
+            Body: fs.createReadStream(pdf.tmpPath!),
           })
         )
       }

@@ -119,6 +119,39 @@ export default class CoursesController {
     return result
   }
 
+  public async changePDF({ request, params }: HttpContextContract) {
+    const { pdf } = await request.validate({
+      schema: schema.create({
+        pdf: schema.file({ size: '10mb', extnames: ['pdf'] }),
+      }),
+    })
+
+    const result = Database.transaction(async (trx) => {
+      let deleteOld: string | null = null
+      const course = await Course.findByOrFail('id', params.id)
+      if (course.pdf) {
+        deleteOld = course.pdf
+      }
+      const filename = `${cuid()}.${pdf.extname}`
+      course.pdf = filename
+      await course.useTransaction(trx).save()
+
+      await s3.send(
+        new PutObjectCommand({
+          Key: filename,
+          Bucket: 'pdf-course',
+          Body: fs.createReadStream(pdf.tmpPath!),
+        })
+      )
+      if (deleteOld) {
+        await s3.send(new DeleteObjectCommand({ Key: deleteOld, Bucket: 'pdf-course' }))
+      }
+
+      return course.toJSON()
+    })
+    return result
+  }
+
   public async addMentor({ request, params }: HttpContextContract) {
     const course = await Course.findByOrFail('id', params.id)
 

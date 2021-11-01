@@ -121,6 +121,8 @@ Route.group(() => {
   Route.group(() => {
     Route.get('/cover/:filename', 'StreamsController.streamCover')
     Route.get('/course-cover/:filename', 'StreamsController.streamCourseCover')
+    Route.get('/course-pdf/:filename', 'StreamsController.streamCoursePDF')
+    Route.get('/subject-pdf/:filename', 'StreamsController.streamSubjectPDF')
     Route.get('/product-cover/:filename', 'StreamsController.streamProductCover')
     Route.get('/synopsis/:filename', 'StreamsController.streamSynopsis')
     Route.get('/bab/:filename', 'StreamsController.streamBab').as('streamBab')
@@ -147,6 +149,12 @@ Route.group(() => {
         cast: (id) => Number(id),
       })
       .where('userId', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware(['auth:adminApi', 'adminRole:super'])
+    Route.put('/:id/pdf', 'CoursesController.changePDF')
+      .where('id', {
         match: /^[0-9]+$/,
         cast: (id) => Number(id),
       })

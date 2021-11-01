@@ -34,6 +34,16 @@ export default class Subject extends BaseModel {
   @column()
   public courseId: number
 
+  @column({
+    serialize: (value: string) => {
+      if (!value) {
+        return null
+      }
+      return '/api/stream/subject-pdf/' + value
+    },
+  })
+  public pdf: string
+
   @belongsTo(() => Subject, { foreignKey: 'parentId' })
   public parent: BelongsTo<typeof Subject>
 

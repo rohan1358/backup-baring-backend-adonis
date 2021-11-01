@@ -8,6 +8,7 @@ import sharp from 'sharp'
 import Content from 'App/Models/Content'
 import Course from 'App/Models/Course'
 import Product from 'App/Models/Product'
+import Subject from 'App/Models/Subject'
 
 export default class StreamsController {
   public async streamCover({ params, response }: HttpContextContract) {
@@ -42,6 +43,22 @@ export default class StreamsController {
 
     file.Body.pipe(transform).pipe(stream)
     return response.stream(stream)
+  }
+
+  public async streamCoursePDF({ params, response }: HttpContextContract) {
+    const course = await Course.findByOrFail('pdf', params.filename)
+
+    const file = await s3.send(new GetObjectCommand({ Bucket: 'pdf-course', Key: course.pdf }))
+
+    return response.stream(file.Body)
+  }
+
+  public async streamSubjectPDF({ params, response }: HttpContextContract) {
+    const subject = await Subject.findByOrFail('pdf', params.filename)
+
+    const file = await s3.send(new GetObjectCommand({ Bucket: 'pdf-course', Key: subject.pdf }))
+
+    return response.stream(file.Body)
   }
 
   public async streamProductCover({ params, response }: HttpContextContract) {
