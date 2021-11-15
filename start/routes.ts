@@ -120,6 +120,7 @@ Route.group(() => {
 
   Route.group(() => {
     Route.get('/cover/:filename', 'StreamsController.streamCover')
+    Route.get('/partner-logo/:id', 'StreamsController.partnerLogo')
     Route.get('/course-cover/:filename', 'StreamsController.streamCourseCover')
     Route.get('/course-pdf/:filename', 'StreamsController.streamCoursePDF')
     Route.get('/subject-pdf/:filename', 'StreamsController.streamSubjectPDF')
@@ -184,6 +185,10 @@ Route.group(() => {
 
   Route.group(() => {
     Route.delete('/:id', 'PartnersController.delete').where('id', {
+      match: /^[0-9]+$/,
+      cast: (id) => Number(id),
+    })
+    Route.put('/:id/logo', 'PartnersController.changeLogo').where('id', {
       match: /^[0-9]+$/,
       cast: (id) => Number(id),
     })

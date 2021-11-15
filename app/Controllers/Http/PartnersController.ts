@@ -4,6 +4,10 @@ import Database from '@ioc:Adonis/Lucid/Database'
 import Admin from 'App/Models/Admin'
 import Partner from 'App/Models/Partner'
 import Hash from '@ioc:Adonis/Core/Hash'
+import { cuid } from '@ioc:Adonis/Core/Helpers'
+import s3 from 'App/Helpers/s3'
+import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import fs from 'fs'
 
 export default class PartnersController {
   public async index({ request }: HttpContextContract) {
@@ -109,5 +113,39 @@ export default class PartnersController {
 
     await partner.delete()
     return partner.toJSON()
+  }
+
+  public async changeLogo({ request, params }: HttpContextContract) {
+    const { logo } = await request.validate({
+      schema: schema.create({
+        logo: schema.file({
+          size: '10mb',
+          extnames: ['jpg', 'jpeg', 'png'],
+        }),
+      }),
+    })
+
+    const partner = await Partner.findOrFail(params.id)
+    const result = await Database.transaction(async (t) => {
+      let deleteOld: string | boolean = partner.logo || false
+      const fileName = `${cuid()}.${logo.extname}`
+      partner.logo = fileName
+      await partner.useTransaction(t).save()
+
+      if (deleteOld) {
+        await s3.send(new DeleteObjectCommand({ Key: deleteOld, Bucket: 'logo-01' }))
+      }
+      await s3.send(
+        new PutObjectCommand({
+          Key: fileName,
+          Bucket: 'logo-01',
+          Body: fs.createReadStream(logo.tmpPath!),
+        })
+      )
+
+      return partner.serialize()
+    })
+
+    return result
   }
 }

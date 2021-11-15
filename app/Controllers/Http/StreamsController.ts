@@ -4,11 +4,13 @@ import s3 from 'App/Helpers/s3'
 import Bab from 'App/Models/Bab'
 import { PassThrough } from 'stream'
 import sharp from 'sharp'
-
 import Content from 'App/Models/Content'
 import Course from 'App/Models/Course'
 import Product from 'App/Models/Product'
 import Subject from 'App/Models/Subject'
+import Partner from 'App/Models/Partner'
+import fs from 'fs'
+import Application from '@ioc:Adonis/Core/Application'
 
 export default class StreamsController {
   public async streamCover({ params, response }: HttpContextContract) {
@@ -24,6 +26,21 @@ export default class StreamsController {
       .webp()
 
     file.Body.pipe(transform).pipe(stream)
+    return response.stream(stream)
+  }
+
+  public async partnerLogo({ params, response }: HttpContextContract) {
+    const partner = await Partner.findOrFail(params.id)
+    const stream = new PassThrough()
+
+    if (partner.logo) {
+      const file = await s3.send(new GetObjectCommand({ Bucket: 'logo-01', Key: partner.logo }))
+      file.Body.pipe(stream)
+    } else {
+      const file = fs.createReadStream(Application.makePath('public', 'base-logo.png'))
+      file.pipe(stream)
+    }
+
     return response.stream(stream)
   }
 

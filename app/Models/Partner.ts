@@ -13,6 +13,9 @@ export default class Partner extends BaseModel {
   @column()
   public amemberGroup: number
 
+  @column()
+  public logo: string
+
   @hasMany(() => Admin)
   public admins: HasMany<typeof Admin>
 
