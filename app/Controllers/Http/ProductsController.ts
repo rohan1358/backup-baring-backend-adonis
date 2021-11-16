@@ -61,6 +61,20 @@ export default class ProductsController {
     return result
   }
 
+  public async changeWeight({ request, params }: HttpContextContract) {
+    const { weight } = await request.validate({
+      schema: schema.create({
+        weight: schema.number(),
+      }),
+    })
+
+    const product = await Product.findOrFail(params.id)
+    product.weight = weight
+    await product.save()
+
+    return product.serialize()
+  }
+
   public async read({ params }: HttpContextContract) {
     const product = await Product.query().where('id', params.id).firstOrFail()
 

@@ -123,13 +123,17 @@ Route.group(() => {
     Route.get('/partner-logo/:id', 'StreamsController.partnerLogo')
     Route.get('/course-cover/:filename', 'StreamsController.streamCourseCover')
     Route.get('/course-pdf/:filename', 'StreamsController.streamCoursePDF')
-    Route.get('/subject-pdf/:filename', 'StreamsController.streamSubjectPDF')
+    Route.get('/course-audio/:filename', 'StreamsController.streamSubjectAudio').as(
+      'streamSubjectAudio'
+    )
+    Route.get('/subject-pdf/:filename', 'StreamsController.streamSubjectPDF').as('streamSubjectPDF')
     Route.get('/product-cover/:filename', 'StreamsController.streamProductCover')
     Route.get('/synopsis/:filename', 'StreamsController.streamSynopsis')
     Route.get('/bab/:filename', 'StreamsController.streamBab').as('streamBab')
   }).prefix('/stream')
 
   Route.group(() => {
+    Route.get('/list', 'CoursesController.list').middleware('auth:userApi')
     Route.post('/join/:id', 'CoursesController.join')
       .where('id', {
         match: /^[0-9]+$/,
@@ -316,6 +320,12 @@ Route.group(() => {
         cast: (id) => Number(id),
       })
       .middleware(['auth:adminApi', 'adminRole:super'])
+    Route.put('/:id/weight', 'ProductsController.changeWeight')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware(['auth:adminApi', 'adminRole:super'])
     Route.get('/:id', 'ProductsController.read')
       .where('id', {
         match: /^[0-9]+$/,
@@ -333,4 +343,18 @@ Route.group(() => {
   })
     .prefix('/cart')
     .middleware('auth:userApi')
+
+  Route.group(() => {
+    Route.get('/province', 'RajaongkirsController.getProvince')
+    Route.get('/city', 'RajaongkirsController.getCity')
+    Route.get('/subdistrict', 'RajaongkirsController.getSubdistrict')
+    Route.get('/cost', 'RajaongkirsController.cost')
+  })
+    .prefix('/shipping')
+    .middleware('auth:userApi')
+
+  Route.group(() => {
+    Route.get('/list', 'CheckoutsController.list').middleware('auth:userApi')
+    Route.post('/', 'CheckoutsController.create').middleware('auth:userApi')
+  }).prefix('/checkout')
 }).prefix('/api')

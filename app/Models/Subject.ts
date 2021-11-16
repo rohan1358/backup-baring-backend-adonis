@@ -14,6 +14,7 @@ import { DateTime } from 'luxon'
 import Boost from './Boost'
 import Comment from './Comment'
 import Course from './Course'
+import Route from '@ioc:Adonis/Core/Route'
 
 export default class Subject extends BaseModel {
   @column({ isPrimary: true })
@@ -39,10 +40,36 @@ export default class Subject extends BaseModel {
       if (!value) {
         return null
       }
-      return '/api/stream/subject-pdf/' + value
+      return Route.makeSignedUrl(
+        'streamSubjectPDF',
+        {
+          filename: value,
+        },
+        {
+          expiresIn: '30m',
+        }
+      )
     },
   })
   public pdf: string
+
+  @column({
+    serialize: (value: string) => {
+      if (!value) {
+        return null
+      }
+      return Route.makeSignedUrl(
+        'streamSubjectAudio',
+        {
+          filename: value,
+        },
+        {
+          expiresIn: '30m',
+        }
+      )
+    },
+  })
+  public audio: string
 
   @belongsTo(() => Subject, { foreignKey: 'parentId' })
   public parent: BelongsTo<typeof Subject>

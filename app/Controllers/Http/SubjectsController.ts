@@ -15,10 +15,14 @@ export default class SubjectsController {
   }
 
   private async _create({ params, request }: HttpContextContract, inParent: boolean = false) {
-    const { title, body, video, pdf } = await request.validate({
+    const { title, body, video, pdf, audio } = await request.validate({
       schema: schema.create({
         title: schema.string(),
         body: schema.string.optional(),
+        audio: schema.file.optional({
+          size: '100mb',
+          extnames: ['mp3', 'ogg', 'wav', 'flac', 'aac'],
+        }),
         video: schema.file.optional({
           size: '1024mb',
           extnames: [
@@ -75,6 +79,7 @@ export default class SubjectsController {
     const result = await Database.transaction(async (trx) => {
       const filename = `${cuid()}.${video?.extname}`
       const pdfFilename = `${cuid()}.${pdf?.extname}`
+      const audioFilename = `${cuid()}.${audio?.extname}`
 
       const subject = new Subject()
       subject.title = title
@@ -83,6 +88,9 @@ export default class SubjectsController {
       }
       if (video) {
         subject.video = filename
+      }
+      if (audio) {
+        subject.audio = audioFilename
       }
       if (pdf) {
         subject.pdf = pdfFilename
@@ -103,6 +111,15 @@ export default class SubjectsController {
             Key: filename,
             Bucket: 'video-online-course',
             Body: fs.createReadStream(video.tmpPath!),
+          })
+        )
+      }
+      if (audio) {
+        await s3.send(
+          new PutObjectCommand({
+            Key: audioFilename,
+            Bucket: 'audio-course',
+            Body: fs.createReadStream(audio.tmpPath!),
           })
         )
       }
@@ -132,10 +149,19 @@ export default class SubjectsController {
 
   public async edit({ params, request }: HttpContextContract) {
     const subject = await Subject.findByOrFail('id', params.id)
-    const { title, body, video } = await request.validate({
+    const { title, body, video, audio, pdf } = await request.validate({
       schema: schema.create({
         title: schema.string(),
         body: schema.string.optional(),
+        audio: schema.file.optional({
+          size: '100mb',
+          extnames: ['mp3', 'ogg', 'wav', 'flac', 'aac'],
+        }),
+
+        pdf: schema.file.optional({
+          size: '10mb',
+          extnames: ['pdf'],
+        }),
         video: schema.file.optional({
           size: '1024mb',
           extnames: [
@@ -187,7 +213,11 @@ export default class SubjectsController {
 
     const result = await Database.transaction(async (trx) => {
       let deleteOld: string | null = null
+      let deleteOldAudio: string | null = null
+      let deleteOldPdf: string | null = null
       const filename = `${cuid()}.${video?.extname}`
+      const audioFileName = `${cuid()}.${audio?.extname}`
+      const pdfFileName = `${cuid()}.${pdf?.extname}`
       subject.title = title
       subject.body = body || ''
       if (video) {
@@ -195,6 +225,18 @@ export default class SubjectsController {
           deleteOld = subject.video
         }
         subject.video = filename
+      }
+      if (audio) {
+        if (subject.audio) {
+          deleteOldAudio = subject.audio
+        }
+        subject.audio = audioFileName
+      }
+      if (pdf) {
+        if (subject.pdf) {
+          deleteOldPdf = subject.pdf
+        }
+        subject.pdf = pdfFileName
       }
       await subject.useTransaction(trx).save()
 
@@ -207,6 +249,30 @@ export default class SubjectsController {
             Key: filename,
             Bucket: 'video-online-course',
             Body: fs.createReadStream(video.tmpPath!),
+          })
+        )
+      }
+      if (audio) {
+        if (deleteOldAudio) {
+          await s3.send(new DeleteObjectCommand({ Key: deleteOldAudio, Bucket: 'audio-course' }))
+        }
+        await s3.send(
+          new PutObjectCommand({
+            Key: audioFileName,
+            Bucket: 'audio-course',
+            Body: fs.createReadStream(audio.tmpPath!),
+          })
+        )
+      }
+      if (pdf) {
+        if (deleteOldPdf) {
+          await s3.send(new DeleteObjectCommand({ Key: deleteOldPdf, Bucket: 'pdf-course' }))
+        }
+        await s3.send(
+          new PutObjectCommand({
+            Key: pdfFileName,
+            Bucket: 'pdf-course',
+            Body: fs.createReadStream(pdf.tmpPath!),
           })
         )
       }

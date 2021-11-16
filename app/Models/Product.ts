@@ -29,6 +29,9 @@ export default class Product extends BaseModel {
   @column()
   public amemberId: number
 
+  @column()
+  public weight: number
+
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime
 

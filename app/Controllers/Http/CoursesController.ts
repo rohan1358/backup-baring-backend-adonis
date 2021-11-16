@@ -43,6 +43,38 @@ export default class CoursesController {
     }
   }
 
+  public async list({ request, auth }: HttpContextContract) {
+    const { page } = await validator.validate({
+      schema: schema.create({
+        page: schema.number.optional(),
+      }),
+      data: request.all(),
+    })
+
+    const limit = 12
+    const offset = (page ? page - 1 : 0) * limit
+
+    const total = await Course.query()
+      .whereHas('users', (query) => {
+        query.where('users.id', auth.use('userApi').user?.id!)
+      })
+      .count('* as total')
+    const courses = await Course.query()
+      .preload('users', (query) => {
+        query.wherePivot('mentor', true)
+      })
+      .whereHas('users', (query) => {
+        query.where('users.id', auth.use('userApi').user?.id!)
+      })
+      .limit(limit)
+      .offset(offset)
+
+    return {
+      total: Math.ceil(Number(total[0]?.$extras.total || '0') / limit),
+      data: courses.map((course) => course.serialize()),
+    }
+  }
+
   public async read({ params, auth }: HttpContextContract) {
     const courseQuery = Course.query()
       .where('courses.id', params.id)

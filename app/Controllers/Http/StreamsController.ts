@@ -70,7 +70,10 @@ export default class StreamsController {
     return response.stream(file.Body)
   }
 
-  public async streamSubjectPDF({ params, response }: HttpContextContract) {
+  public async streamSubjectPDF({ request, params, response }: HttpContextContract) {
+    if (!request.hasValidSignature()) {
+      return response.methodNotAllowed()
+    }
     const subject = await Subject.findByOrFail('pdf', params.filename)
 
     const file = await s3.send(new GetObjectCommand({ Bucket: 'pdf-course', Key: subject.pdf }))
@@ -121,6 +124,27 @@ export default class StreamsController {
     const range = request.header('range')
     const file = await s3.send(
       new GetObjectCommand({ Key: audio, Bucket: 'ring-audio-01', Range: range })
+    )
+
+    response.status(206)
+    response.header('Cache-Control', 'no-store')
+    response.header('Content-Range', file.ContentRange!)
+    response.header('Accept-Ranges', 'bytes')
+    response.header('Content-Length', file.ContentLength!)
+    response.header('Content-Type', file.ContentType!)
+
+    response.stream(file.Body)
+  }
+
+  public async streamSubjectAudio({ response, request, params }: HttpContextContract) {
+    if (!request.hasValidSignature()) {
+      return response.methodNotAllowed()
+    }
+
+    const { audio } = await Subject.findByOrFail('audio', params.filename)
+    const range = request.header('range')
+    const file = await s3.send(
+      new GetObjectCommand({ Key: audio, Bucket: 'audio-course', Range: range })
     )
 
     response.status(206)
