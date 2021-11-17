@@ -44,7 +44,7 @@ export default class AuthController {
 
     if (!axiosResponse.data.ok) return response.unauthorized()
 
-    const { user_id, name, categories, groups = [] } = axiosResponse.data
+    const { user_id, name, email, categories, groups = [] } = axiosResponse.data
 
     const result = await Database.transaction(async (trx) => {
       const user = await User.findBy('amember_id', user_id)
@@ -54,6 +54,7 @@ export default class AuthController {
         newUser.amemberId = user_id
         newUser.fullname = name
         newUser.username = username
+        newUser.email = email
 
         if (groups.length) {
           const partner = await Partner.findBy('amember_group', groups[0])
@@ -87,10 +88,11 @@ export default class AuthController {
                 moment(categories[1], 'YYYY-MM-DD').format('YYYY-MM-DD')))
         ) {
           user.subscriptionEnd = categories[1]
-          await user.useTransaction(trx).save()
 
           subscriber = true
         }
+        user.email = email
+        await user.useTransaction(trx).save()
 
         if (user.subscriptionEnd && moment(user.subscriptionEnd).toDate() <= new Date()) {
           subscriber = true
@@ -147,7 +149,7 @@ export default class AuthController {
           email,
           name_f: firstName,
           name_l: lastName,
-        })
+        }).string()
       )
     } catch (e) {
       return response.internalServerError()
@@ -164,6 +166,7 @@ export default class AuthController {
       user.amemberId = registered.user_id
       user.fullname = fullname
       user.username = username
+      user.email = email
 
       await user.useTransaction(trx).save()
       await this._userLoginLog(user.id, trx)

@@ -11,6 +11,7 @@ import Subject from 'App/Models/Subject'
 import Partner from 'App/Models/Partner'
 import fs from 'fs'
 import Application from '@ioc:Adonis/Core/Application'
+import User from 'App/Models/User'
 
 export default class StreamsController {
   public async streamCover({ params, response }: HttpContextContract) {
@@ -79,6 +80,21 @@ export default class StreamsController {
     const file = await s3.send(new GetObjectCommand({ Bucket: 'pdf-course', Key: subject.pdf }))
 
     return response.stream(file.Body)
+  }
+
+  public async streamUserAvatar({ params, response }: HttpContextContract) {
+    const user = await User.findByOrFail('avatar', params.filename)
+    const stream = new PassThrough()
+    const file = await s3.send(new GetObjectCommand({ Bucket: 'user-avatar', Key: user.avatar }))
+    const transform = sharp()
+      .resize(300, 300, {
+        fit: 'contain',
+      })
+      .webp()
+
+    file.Body.pipe(transform).pipe(stream)
+
+    return response.stream(stream)
   }
 
   public async streamProductCover({ params, response }: HttpContextContract) {

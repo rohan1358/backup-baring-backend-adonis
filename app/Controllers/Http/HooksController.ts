@@ -35,10 +35,11 @@ export default class HooksController {
 
     if (parseInt(amemberId) !== parseInt(axiosResponse.data.user_id)) return response.badRequest()
 
-    const { name: fullname, groups = [] } = axiosResponse.data
+    const { name: fullname, email, groups = [] } = axiosResponse.data
 
     user.username = username
     user.fullname = fullname
+    user.email = email
 
     if (groups.length) {
       for (let group of groups) {

@@ -31,6 +31,19 @@ export default class User extends BaseModel {
   @column()
   public username: string
 
+  @column({
+    serialize: (value: string) => {
+      if (!value) {
+        return '/no-image.png'
+      }
+      return '/api/stream/user-avatar/' + value
+    },
+  })
+  public avatar: string
+
+  @column()
+  public email: string
+
   @column()
   public subscriptionEnd: DateTime
 

@@ -122,6 +122,7 @@ Route.group(() => {
     Route.get('/cover/:filename', 'StreamsController.streamCover')
     Route.get('/partner-logo/:id', 'StreamsController.partnerLogo')
     Route.get('/course-cover/:filename', 'StreamsController.streamCourseCover')
+    Route.get('/user-avatar/:filename', 'StreamsController.streamUserAvatar')
     Route.get('/course-pdf/:filename', 'StreamsController.streamCoursePDF')
     Route.get('/course-audio/:filename', 'StreamsController.streamSubjectAudio').as(
       'streamSubjectAudio'
@@ -225,6 +226,8 @@ Route.group(() => {
   }).prefix('/hook')
 
   Route.group(() => {
+    Route.put('/change-profile', 'UsersController.editProfile').middleware('auth:userApi')
+    Route.get('/:id', 'UsersController.read')
     Route.get('/', 'UsersController.index').middleware('auth:adminApi,userApi')
   }).prefix('/user')
 
@@ -355,6 +358,17 @@ Route.group(() => {
 
   Route.group(() => {
     Route.get('/list', 'CheckoutsController.list').middleware('auth:userApi')
+    Route.get('/:id', 'CheckoutsController.read').middleware([
+      'auth:userApi,adminApi',
+      'adminRole:super',
+    ])
     Route.post('/', 'CheckoutsController.create').middleware('auth:userApi')
   }).prefix('/checkout')
+
+  Route.group(() => {
+    Route.delete('/:id', 'BanksController.delete').middleware(['auth:adminApi', 'adminRole:super'])
+    Route.put('/:id', 'BanksController.edit').middleware(['auth:adminApi', 'adminRole:super'])
+    Route.post('/', 'BanksController.create').middleware(['auth:adminApi', 'adminRole:super'])
+    Route.get('/', 'BanksController.index')
+  }).prefix('bank')
 }).prefix('/api')

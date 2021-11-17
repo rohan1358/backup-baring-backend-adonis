@@ -174,6 +174,7 @@ export default class CheckoutsController {
         destination_rajaongkir,
         shipping_service: `${courier} - ${service}`.toUpperCase(),
         cost,
+        weight,
       }
     }
 
@@ -230,6 +231,22 @@ export default class CheckoutsController {
     return {
       total: Math.ceil(Number(total[0]?.$extras.total || '0') / limit),
       data: checkouts.map((course) => course.serialize()),
+    }
+  }
+
+  public async read({ params, auth, response }: HttpContextContract) {
+    const checkout = await Checkout.findOrFail(params.id)
+
+    if (
+      auth.use('userApi').isLoggedIn &&
+      checkout.userId !== Number(auth.use('userApi').user?.id)
+    ) {
+      return response.unauthorized()
+    }
+
+    return {
+      ...checkout.serialize(),
+      items: (await checkout.related('items').query()).map((item) => item.serialize()),
     }
   }
 }
