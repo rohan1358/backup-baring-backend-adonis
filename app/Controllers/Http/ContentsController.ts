@@ -1,6 +1,6 @@
-import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
-import { validator, schema } from '@ioc:Adonis/Core/Validator'
+import { schema, validator } from '@ioc:Adonis/Core/Validator'
 import Database from '@ioc:Adonis/Lucid/Database'
 import s3 from 'App/Helpers/s3'
 import Author from 'App/Models/Author'
@@ -126,9 +126,10 @@ export default class ContentsController {
     }
   }
   public async index({ request, auth }: HttpContextContract) {
-    const { page } = await validator.validate({
+    const { page, category: categoryId } = await validator.validate({
       schema: schema.create({
         page: schema.number.optional(),
+        category: schema.number.optional(),
       }),
       data: request.all(),
     })
@@ -136,6 +137,11 @@ export default class ContentsController {
     const offset = (page ? page - 1 : 0) * limit
     const q = request.input('q', '')
     const liked = request.input('liked', '') ? true : false
+
+    let category: Category | null = null
+    if (categoryId) {
+      category = await Category.findOrFail(categoryId)
+    }
 
     let total = Database.query()
       .from((subquery) => {
@@ -186,150 +192,19 @@ export default class ContentsController {
       contents = contents.where('contents.title', 'iLike', `%${q}%`)
     }
 
+    if (category) {
+      total = total
+        .leftJoin('category_content', 'contents.id', '=', 'category_content.content_id')
+        .andWhere('category_content.category_id', category.id)
+      contents = contents.andWhereHas('categories', (query) => {
+        query.where('categories.id', category!.id)
+      })
+    }
+
     const contentsJson = (await contents).map((content) => content.serialize())
     return {
       total: Math.ceil(Number((await total)[0].total || '0') / limit),
       data: contentsJson,
-    }
-  }
-
-  public async editContent({ request, response, params }: HttpContextContract) {
-    const content = await Content.findByOrFail('id', params.id)
-
-    let payload
-    try {
-      payload = await request.validate({
-        schema: schema.create({
-          title: schema.string.optional(),
-          synopsis: schema.string.optional(),
-          categories: schema.array.optional().members(schema.number()),
-          createCategories: schema.array.optional().members(schema.string()),
-          authors: schema.array.optional().members(schema.number()),
-          createAuthors: schema.array.optional().members(schema.string()),
-        }),
-      })
-    } catch (e) {
-      return response.badRequest(e.messages)
-    }
-
-    const {
-      title,
-      synopsis,
-      categories: categoryList,
-      createCategories,
-      authors: authorList,
-      createAuthors,
-    } = payload
-    const cover = request.file('cover', {
-      size: '2mb',
-      extnames: ['png', 'jpg', 'jpeg', 'bmp'],
-    })
-    const audio = request.file('audio', {
-      size: '100mb',
-      extnames: ['mp3', 'ogg', 'wav', 'flac', 'aac'],
-    })
-
-    if (title) {
-      content.title = title
-    }
-    if (synopsis) {
-      content.synopsis = synopsis
-    }
-    if (cover) {
-      const fileName = `${cuid()}.${cover.extname}`
-      await s3.send(new DeleteObjectCommand({ Key: content.cover, Bucket: 'covers-01' }))
-      await s3.send(
-        new PutObjectCommand({
-          Key: fileName,
-          Bucket: 'covers-01',
-          Body: fs.createReadStream(cover.tmpPath!),
-        })
-      )
-
-      content.cover = fileName
-    }
-    if (audio) {
-      const audioFileName = `${cuid()}.${audio.extname}`
-      if (content.audio) {
-        await s3.send(new DeleteObjectCommand({ Key: content.audio, Bucket: 'plot-audio-01' }))
-      }
-      await s3.send(
-        new PutObjectCommand({
-          Key: audioFileName,
-          Bucket: 'plot-audio-01',
-          Body: fs.createReadStream(audio.tmpPath!),
-        })
-      )
-
-      content.cover = audioFileName
-    }
-
-    await content.save()
-
-    if (categoryList?.length) {
-      const categories = await Category.query().whereIn('id', categoryList)
-      const contentCategories = await content.related('categories').query()
-      const validCategories: number[] = []
-      const deletedCategories: number[] = []
-
-      for (let category of categories) {
-        validCategories.push(category.id)
-      }
-
-      for (let contentCategory of contentCategories) {
-        const index = validCategories.indexOf(contentCategory.id)
-        if (index >= 0) {
-          validCategories.splice(index, 1)
-        } else {
-          deletedCategories.push(contentCategory.id)
-        }
-      }
-
-      if (validCategories.length) await content.related('categories').attach(validCategories)
-      if (deletedCategories.length) await content.related('categories').detach(validCategories)
-    }
-    if (createCategories?.length) {
-      const newCategoriesData: object[] = []
-      for (let categoryName of createCategories) {
-        newCategoriesData.push({ name: categoryName })
-      }
-      await content.related('categories').createMany(newCategoriesData)
-    }
-
-    if (authorList?.length) {
-      const authors = await Author.query().whereIn('id', authorList)
-      const contentAuthors = await content.related('authors').query()
-      const validAuthors: number[] = []
-      const deletedAuthors: number[] = []
-
-      for (let author of authors) {
-        validAuthors.push(author.id)
-      }
-
-      for (let contentAuthor of contentAuthors) {
-        const index = validAuthors.indexOf(contentAuthor.id)
-        if (index >= 0) {
-          validAuthors.splice(index, 1)
-        } else {
-          deletedAuthors.push(contentAuthor.id)
-        }
-      }
-
-      if (validAuthors.length) await content.related('authors').attach(validAuthors)
-      if (deletedAuthors.length) await content.related('authors').detach(deletedAuthors)
-    }
-    if (createAuthors?.length) {
-      const newAuthorsData: object[] = []
-      for (let authorName of createAuthors) {
-        newAuthorsData.push({ name: authorName })
-      }
-      await content.related('authors').createMany(newAuthorsData)
-    }
-
-    return {
-      ...content.toJSON(),
-      categories: await content.related('categories').query(),
-      authors: await content.related('authors').query(),
     }
   }
 

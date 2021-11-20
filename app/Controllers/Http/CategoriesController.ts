@@ -46,4 +46,10 @@ export default class CategoriesController {
 
     return response
   }
+
+  public async read({ params }: HttpContextContract) {
+    const category = await Category.findOrFail(params.id)
+
+    return category.serialize()
+  }
 }

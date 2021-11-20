@@ -111,8 +111,9 @@ Route.group(() => {
     Route.get('/content', 'CategoriesController.contentGroupByCategory').middleware(
       'auth:userApi,adminApi'
     )
+    Route.get('/:id', 'CategoriesController.read').middleware('auth:userApi,adminApi')
     Route.get('/', 'CategoriesController.index')
-  }).prefix('/categories')
+  }).prefix('/category')
 
   Route.group(() => {
     Route.get('/', 'AuthorsController.index')
