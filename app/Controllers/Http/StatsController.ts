@@ -13,13 +13,13 @@ export default class StatsController {
     per_page: schema.number.optional(),
   })
   public async userLogin({ auth }: HttpContextContract) {
-    const role = parseInt(auth.use('adminApi').user?.role!) || 0
+    const role = auth.use('adminApi').user?.role! || null
     const result: object = {}
     const { rows } = await Database.rawQuery(
       'SELECT DATE(login_logs.created_at) as date,COUNT(*) as value FROM login_logs LEFT JOIN users ON users.id = login_logs.user_id' +
-        (role === 1 ? ' WHERE users.partner_id=:id' : '') +
+        (role === 'partner' ? ' WHERE users.partner_id=:id' : '') +
         ' GROUP BY date ORDER BY date DESC',
-      role === 1
+      role === 'partner'
         ? {
             id: auth.use('adminApi').user?.partnerId!,
           }
@@ -36,9 +36,9 @@ export default class StatsController {
   }
 
   public async userReads({ auth, params, response }: HttpContextContract) {
-    const role = parseInt(auth.use('adminApi').user?.role!) || 0
+    const role = auth.use('adminApi').user?.role! || 0
     const user =
-      role === 1
+      role === 'partner'
         ? await User.query()
             .where('id', params.id)
             .andWhere('partner_id', auth.use('adminApi').user?.partnerId!)
@@ -77,7 +77,7 @@ export default class StatsController {
       schema: this._schemaIndex,
       data: request.all(),
     })
-    const role = parseInt(auth.use('adminApi').user?.role!) || 0
+    const role = auth.use('adminApi').user?.role! || 0
     const start = request.input('start')
       ? moment(request.input('start'), 'YYYY-MM-DD').format('YYYY-MM-DD hh:mm:ss')
       : moment().startOf('month').format('YYYY-MM-DD hh:mm:ss')
@@ -89,18 +89,18 @@ export default class StatsController {
     const offset = (page ? page - 1 : 0) * limit
 
     let total = User.query().count('* as total')
-    if (role === 1) {
+    if (role === 'partner') {
       total = total.where('partner_id', auth.use('adminApi').user?.partnerId!)
     }
 
     const { rows } = await Database.rawQuery(
       "SELECT users.id,users.fullname,CASE WHEN logs.read_total IS NULL THEN '0' ELSE logs.read_total END as total FROM users LEFT JOIN (SELECT user_id,COUNT(*) as read_total FROM read_logs WHERE created_at >= :start AND created_at <= :end GROUP BY user_id) as logs ON logs.user_id = users.id" +
-        (role === 1 ? ' WHERE users.partner_id=:id' : '') +
+        (role === 'partner' ? ' WHERE users.partner_id=:id' : '') +
         ' ORDER BY total DESC OFFSET :offset LIMIT :limit',
       {
         start,
         end,
-        id: role === 1 ? auth.use('adminApi').user?.partnerId! : '',
+        id: role === 'partner' ? auth.use('adminApi').user?.partnerId! : '',
         limit,
         offset,
       }
@@ -117,7 +117,7 @@ export default class StatsController {
       schema: this._schemaIndex,
       data: request.all(),
     })
-    const role = parseInt(auth.use('adminApi').user?.role!) || 0
+    const role = auth.use('adminApi').user?.role! || 0
     const start = request.input('start')
       ? moment(request.input('start'), 'YYYY-MM-DD').format('YYYY-MM-DD hh:mm:ss')
       : moment().startOf('month').format('YYYY-MM-DD hh:mm:ss')
@@ -132,9 +132,9 @@ export default class StatsController {
 
     const { rows } = await Database.rawQuery(
       "SELECT contents.id,contents.title,CASE WHEN reads.total IS NULL THEN '0' ELSE reads.total END as read FROM contents LEFT JOIN (SELECT COUNT(*) as total,babs.content_id as content_id FROM read_logs LEFT JOIN babs ON babs.id=read_logs.bab_id LEFT OUTER JOIN users ON users.id=read_logs.user_id WHERE read_logs.created_at >= :start AND read_logs.created_at <= :end" +
-        (role === 1 ? ' AND users.partner_id=:id' : '') +
+        (role === 'partner' ? ' AND users.partner_id=:id' : '') +
         ' GROUP BY babs.content_id ) as reads ON reads.content_id=contents.id ORDER BY read DESC LIMIT :limit OFFSET :offset',
-      role === 1
+      role === 'partner'
         ? {
             id: auth.use('adminApi').user?.partnerId!,
             start,
@@ -161,7 +161,7 @@ export default class StatsController {
       schema: this._schemaIndex,
       data: request.all(),
     })
-    const role = parseInt(auth.use('adminApi').user?.role!) || 0
+    const role = auth.use('adminApi').user?.role! || 0
     const start = request.input('start')
       ? moment(request.input('start'), 'YYYY-MM-DD').format('YYYY-MM-DD hh:mm:ss')
       : moment().startOf('month').format('YYYY-MM-DD hh:mm:ss')
@@ -176,9 +176,9 @@ export default class StatsController {
 
     const { rows } = await Database.rawQuery(
       "SELECT categories.id,categories.name,CASE WHEN reads.total IS NULL THEN '0' ELSE reads.total END as read FROM categories LEFT JOIN (SELECT COUNT(*) as total,category_content.category_id as category_id FROM read_logs LEFT JOIN babs ON babs.id=read_logs.bab_id LEFT JOIN category_content ON category_content.content_id=babs.content_id LEFT OUTER JOIN users ON users.id=read_logs.user_id WHERE read_logs.created_at >= :start AND read_logs.created_at <= :end" +
-        (role === 1 ? ' AND users.partner_id=:id' : '') +
+        (role === 'partner' ? ' AND users.partner_id=:id' : '') +
         ' GROUP BY category_content.category_id ) as reads ON reads.category_id=categories.id ORDER BY read DESC LIMIT :limit OFFSET :offset',
-      role === 1
+      role === 'partner'
         ? {
             id: auth.use('adminApi').user?.partnerId!,
             start,

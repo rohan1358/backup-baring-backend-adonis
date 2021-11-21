@@ -19,7 +19,12 @@ export default class HooksController {
     const { user_id: amemberId } = JSON.parse(oldUser)
     const { login: username } = JSON.parse(newUser)
 
-    const user = await User.findByOrFail('amember_id', parseInt(amemberId))
+    let user: User | null = await User.findBy('amember_id', parseInt(amemberId))
+
+    if (!user) {
+      user = new User()
+      user.amemberId = amemberId
+    }
 
     let axiosResponse
     try {
@@ -35,23 +40,27 @@ export default class HooksController {
 
     if (parseInt(amemberId) !== parseInt(axiosResponse.data.user_id)) return response.badRequest()
 
-    const { name: fullname, email, groups = [] } = axiosResponse.data
+    const { name: fullname, email, groups = {}, categories = {} } = axiosResponse.data
 
     user.username = username
     user.fullname = fullname
     user.email = email
 
-    if (groups.length) {
-      for (let group of groups) {
+    if (groups) {
+      for (let group in groups) {
         if (Number(group) === 4) {
           user.isMentor = true
         } else {
-          const partner = await Partner.findBy('amember_group', groups[0])
+          const partner = await Partner.findBy('amember_group', group)
           if (partner) {
             user.partnerId = partner.id
           }
         }
       }
+    }
+
+    if (categories['1']) {
+      user.subscriptionEnd = categories['1']
     }
 
     await user.save()

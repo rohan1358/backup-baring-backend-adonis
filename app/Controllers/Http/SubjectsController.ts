@@ -24,7 +24,7 @@ export default class SubjectsController {
           extnames: ['mp3', 'ogg', 'wav', 'flac', 'aac'],
         }),
         video: schema.file.optional({
-          size: '1024mb',
+          size: '3000mb',
           extnames: [
             'mp4',
             'mkv',
@@ -163,7 +163,7 @@ export default class SubjectsController {
           extnames: ['pdf'],
         }),
         video: schema.file.optional({
-          size: '1024mb',
+          size: '3000mb',
           extnames: [
             'mp4',
             'mkv',
