@@ -57,16 +57,22 @@ export default class AuthController {
         newUser.email = email
 
         if (groups.length) {
-          const partner = await Partner.findBy('amember_group', groups[0])
-          if (partner) {
-            newUser.partnerId = partner.id
+          for (let group of groups) {
+            if (Number(group) === 4) {
+              newUser.isMentor = true
+            } else {
+              const partner = await Partner.findBy('amember_group', group)
+              if (partner) {
+                newUser.partnerId = partner.id
+              }
+            }
           }
         }
 
         let subscriber = false
 
-        if (categories[1]) {
-          newUser.subscriptionEnd = categories[1]
+        if (categories['1']) {
+          newUser.subscriptionEnd = categories['1']
           subscriber = true
         }
 
@@ -81,13 +87,13 @@ export default class AuthController {
         let subscriber = false
 
         if (
-          categories[1] &&
+          categories['1'] &&
           (!user.subscriptionEnd ||
             (user.subscriptionEnd &&
               moment(user.subscriptionEnd).format('YYYY-MM-DD') !==
-                moment(categories[1], 'YYYY-MM-DD').format('YYYY-MM-DD')))
+                moment(categories['1'], 'YYYY-MM-DD').format('YYYY-MM-DD')))
         ) {
-          user.subscriptionEnd = categories[1]
+          user.subscriptionEnd = categories['1']
 
           subscriber = true
         }

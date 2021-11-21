@@ -40,14 +40,14 @@ export default class HooksController {
 
     if (parseInt(amemberId) !== parseInt(axiosResponse.data.user_id)) return response.badRequest()
 
-    const { name: fullname, email, groups = {}, categories = {} } = axiosResponse.data
+    const { name: fullname, email, groups = [], categories = {} } = axiosResponse.data
 
     user.username = username
     user.fullname = fullname
     user.email = email
 
-    if (groups) {
-      for (let group in groups) {
+    if (groups.length) {
+      for (let group of groups) {
         if (Number(group) === 4) {
           user.isMentor = true
         } else {
