@@ -1,23 +1,23 @@
 import Env from '@ioc:Adonis/Core/Env'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
-import { schema } from '@ioc:Adonis/Core/Validator'
 import Course from 'App/Models/Course'
-import Product from 'App/Models/Product'
 import Partner from 'App/Models/Partner'
+import Product from 'App/Models/Product'
 import User from 'App/Models/User'
 import axios from 'axios'
 
 export default class HooksController {
   public async updateUser({ request, response }: HttpContextContract) {
-    const { user: newUser, oldUser } = await request.validate({
-      schema: schema.create({
-        oldUser: schema.string(),
-        user: schema.string(),
-      }),
-    })
+    console.log('Ke hit')
+    const newUser = request.input('user')
+    const oldUser = request.input('oldUser')
 
-    const { user_id: amemberId } = JSON.parse(oldUser)
-    const { login: username } = JSON.parse(newUser)
+    if (!newUser || !oldUser) {
+      return response.badRequest()
+    }
+
+    const { user_id: amemberId } = oldUser
+    const { login: username } = newUser
 
     let user: User | null = await User.findBy('amember_id', parseInt(amemberId))
 
