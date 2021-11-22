@@ -119,7 +119,7 @@ export default class AuthController {
       amember_id: result.user.amemberId,
       token: (await auth.use('userApi').generate(result.user)).token,
       subscriber: result.subscriber,
-      partnerId: result.user.partnerId,
+      partner_id: result.user.partnerId,
     }
   }
   public async register({ request, response, auth }: HttpContextContract) {
@@ -185,7 +185,7 @@ export default class AuthController {
       amember_id: user.amemberId,
       token: (await auth.use('userApi').generate(user)).token,
       subscriber: false,
-      partnerId: user.partnerId,
+      partner_id: user.partnerId,
     }
   }
   public async adminLogin({ request, response, auth }: HttpContextContract) {
