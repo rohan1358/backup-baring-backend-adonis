@@ -31,6 +31,9 @@ export default class Checkout extends BaseModel {
   @column()
   public isPaid: boolean
 
+  @column()
+  public invoiceId: number
+
   @belongsTo(() => User)
   public user: BelongsTo<typeof User>
 

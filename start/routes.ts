@@ -222,6 +222,7 @@ Route.group(() => {
     .middleware(['auth:adminApi', 'adminRole:super,partner'])
 
   Route.group(() => {
+    Route.post('/c2F5YSBpbmdpbiBrYXlh', 'HooksController.afterPaid')
     Route.post('/MTFhZ3VzdHVz', 'HooksController.updateUser')
     Route.get('/YWtiYXJhZGl0YW1h', 'HooksController.productHook')
   }).prefix('/hook')

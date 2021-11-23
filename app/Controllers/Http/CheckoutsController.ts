@@ -103,7 +103,7 @@ export default class CheckoutsController {
               resolve(false)
               return
             }
-            resolve(true)
+            resolve(response.data[0].invoice_id)
           })
           .catch(() => {
             resolve(false)
@@ -294,8 +294,6 @@ export default class CheckoutsController {
       checkout.userId = auth.use('userApi').user?.id!
 
       await Cart.query().useTransaction(t).whereIn('id', cartDeleted).delete()
-      await checkout.useTransaction(t).save()
-      await checkout.useTransaction(t).related('items').saveMany(items)
       const invoice = await this._createInvoice(
         auth.use('userApi').user?.amemberId!,
         uniqueNumber,
@@ -306,6 +304,10 @@ export default class CheckoutsController {
       if (!invoice) {
         throw new Error()
       }
+
+      checkout.invoiceId = invoice as number
+      await checkout.useTransaction(t).save()
+      await checkout.useTransaction(t).related('items').saveMany(items)
 
       return checkout
     })

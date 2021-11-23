@@ -5,10 +5,70 @@ import Partner from 'App/Models/Partner'
 import Product from 'App/Models/Product'
 import User from 'App/Models/User'
 import axios from 'axios'
+import Checkout from 'App/Models/Checkout'
+import Database from '@ioc:Adonis/Lucid/Database'
 
 export default class HooksController {
+  private _getInvoice(login) {
+    return new Promise((resolve) => {
+      axios
+        .get(`${Env.get('AMEMBER_URL')}/api/check-access/by-login`, {
+          params: {
+            _key: Env.get('AMEMBER_KEY'),
+            login,
+          },
+        })
+        .then((response) => {
+          if (response.data?.error) {
+            resolve(false)
+            return
+          }
+
+          resolve(response.data.subscriptions)
+        })
+        .catch(() => {
+          resolve(false)
+        })
+    })
+  }
+
+  public async afterPaid({ request, response }: HttpContextContract) {
+    const invoice = request.input('invoice')
+
+    if (!invoice) {
+      return response.badRequest()
+    }
+
+    const { invoice_id: invoiceId } = JSON.parse(invoice)
+    const checkout = await Checkout.findByOrFail('invoice_id', invoiceId)
+    const user = await checkout.related('user').query().firstOrFail()
+
+    const items = await checkout.related('items').query().preload('course').preload('product')
+    const results = await Database.transaction(async (t) => {
+      const courses: any = {}
+      const subscription: any = await this._getInvoice(user.username)
+
+      for (let item of items) {
+        if (item.course && subscription[item.course.amemberId]) {
+          courses[item.course.id] = {
+            mentor: false,
+            subscription_end: subscription[item.course.amemberId],
+          }
+        }
+      }
+
+      checkout.isPaid = true
+
+      await user.useTransaction(t).related('courses').attach(courses)
+      await checkout.useTransaction(t).save()
+
+      return checkout.serialize()
+    })
+
+    return results
+  }
+
   public async updateUser({ request, response }: HttpContextContract) {
-    console.log('Ke hit')
     const newUser = request.input('user')
     const oldUser = request.input('oldUser')
 
