@@ -26,7 +26,9 @@ export default class Subject extends BaseModel {
   @column()
   public body: string
 
-  @column()
+  @column({
+    serializeAs: null,
+  })
   public video: string
 
   @column()

@@ -4,8 +4,9 @@ import Database from '@ioc:Adonis/Lucid/Database'
 import Subject from 'App/Models/Subject'
 import { cuid } from '@ioc:Adonis/Core/Helpers'
 import s3 from 'App/Helpers/s3'
-import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import fs from 'fs'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 export default class SubjectsController {
   private _infiniteLoad(query) {
@@ -324,6 +325,13 @@ export default class SubjectsController {
 
     return {
       ...subject.toJSON(),
+      video: subject.video
+        ? await getSignedUrl(
+            s3 as any,
+            new GetObjectCommand({ Key: subject.video, Bucket: 'video-online-course' }) as any,
+            { expiresIn: 21600 }
+          )
+        : null,
       comments_count: subject.$extras.comments_count,
       is_boosted: subject.$extras.is_boosted,
       is_member: subject.$extras.is_member,
