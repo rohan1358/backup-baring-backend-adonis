@@ -39,7 +39,7 @@ export default class HooksController {
       return response.badRequest()
     }
 
-    const { invoice_id: invoiceId } = JSON.parse(invoice)
+    const { invoice_id: invoiceId } = typeof invoice === 'string' ? JSON.parse(invoice) : invoice
     const checkout = await Checkout.findByOrFail('invoice_id', invoiceId)
     const user = await checkout.related('user').query().firstOrFail()
 
