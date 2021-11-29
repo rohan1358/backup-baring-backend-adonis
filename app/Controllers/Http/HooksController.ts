@@ -43,10 +43,14 @@ export default class HooksController {
     const checkout = await Checkout.findByOrFail('invoice_id', invoiceId)
     const user = await checkout.related('user').query().firstOrFail()
 
-    const items = await checkout.related('items').query().preload('course').preload('product')
+    const items = await checkout
+      .related('items')
+      .query()
+      .preload('course')
+      .whereNotNull('course.id')
     const results = await Database.transaction(async (t) => {
       const courses: any = {}
-      const subscription: any = await this._getInvoice(user.username)
+      const subscription = ((await this._getInvoice(user.username)) || {}) as object
 
       for (let item of items) {
         if (item.course && subscription[item.course.amemberId]) {
