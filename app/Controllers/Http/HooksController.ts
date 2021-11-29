@@ -47,7 +47,7 @@ export default class HooksController {
       .related('items')
       .query()
       .preload('course')
-      .whereNotNull('course.id')
+      .whereNotNull('course_id')
     const results = await Database.transaction(async (t) => {
       const courses: any = {}
       const subscription = ((await this._getInvoice(user.username)) || {}) as object
