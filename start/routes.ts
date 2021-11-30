@@ -356,7 +356,7 @@ Route.group(() => {
     Route.get('/cost', 'RajaongkirsController.cost')
   })
     .prefix('/shipping')
-    .middleware('auth:userApi')
+    .middleware(['auth:userApi,adminApi', 'adminRole:super'])
 
   Route.group(() => {
     Route.get('/list', 'CheckoutsController.list').middleware('auth:userApi')
@@ -373,4 +373,12 @@ Route.group(() => {
     Route.post('/', 'BanksController.create').middleware(['auth:adminApi', 'adminRole:super'])
     Route.get('/', 'BanksController.index')
   }).prefix('bank')
+
+  Route.group(() => {
+    Route.get('/rajaongkir', 'ConfigsController.getRajaongkir')
+    Route.post('/rajaongkir', 'ConfigsController.setRajaongkir').middleware([
+      'auth:adminApi',
+      'adminRole:super',
+    ])
+  }).prefix('config')
 }).prefix('/api')

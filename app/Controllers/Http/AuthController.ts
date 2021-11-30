@@ -10,6 +10,7 @@ import Hash from '@ioc:Adonis/Core/Hash'
 import LoginLog from 'App/Models/LoginLog'
 import Partner from 'App/Models/Partner'
 import Database from '@ioc:Adonis/Lucid/Database'
+import Course from 'App/Models/Course'
 
 export default class AuthController {
   private async _userLoginLog(id: number, trx) {
@@ -44,7 +45,28 @@ export default class AuthController {
 
     if (!axiosResponse.data.ok) return response.unauthorized()
 
-    const { user_id, name, email, categories, groups = [] } = axiosResponse.data
+    const courses: any = {}
+
+    const {
+      user_id,
+      name,
+      email,
+      categories,
+      groups = [],
+      subscriptions = {} as any,
+    } = axiosResponse.data
+
+    const coursesList = await Course.query().whereIn(
+      'amember_id',
+      Object.keys(subscriptions).map((el) => Number(el))
+    )
+
+    for (let item of coursesList) {
+      courses[item.id] = {
+        mentor: false,
+        subscription_end: subscriptions[item.amemberId],
+      }
+    }
 
     const result = await Database.transaction(async (trx) => {
       const user = await User.findBy('amember_id', user_id)
@@ -77,6 +99,9 @@ export default class AuthController {
         }
 
         await newUser.useTransaction(trx).save()
+        if (Object.keys(courses).length) {
+          await newUser.useTransaction(trx).related('courses').attach(courses)
+        }
         await this._userLoginLog(newUser.id, trx)
 
         return {
@@ -99,6 +124,9 @@ export default class AuthController {
         }
         user.email = email
         await user.useTransaction(trx).save()
+        if (Object.keys(courses).length) {
+          await user.useTransaction(trx).related('courses').attach(courses)
+        }
 
         if (user.subscriptionEnd && moment(user.subscriptionEnd).toDate() <= new Date()) {
           subscriber = true

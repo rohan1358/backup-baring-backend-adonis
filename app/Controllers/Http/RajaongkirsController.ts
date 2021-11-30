@@ -2,6 +2,8 @@ import Env from '@ioc:Adonis/Core/Env'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import axios from 'axios'
 import Cart from 'App/Models/Cart'
+import Application from '@ioc:Adonis/Core/Application'
+import fs from 'fs'
 
 export default class RajaongkirsController {
   private service = axios.create({
@@ -109,6 +111,10 @@ export default class RajaongkirsController {
       return response.badRequest()
     }
 
+    const rajaongkirConfig = JSON.parse(
+      fs.readFileSync(Application.makePath('app/Services/rajaongkir.json')) as any
+    )
+
     const carts = await Cart.query()
       .where('user_id', auth.use('userApi').user?.id!)
       .preload('product')
@@ -127,12 +133,12 @@ export default class RajaongkirsController {
     const promise = new Promise((resolve) => {
       this.service
         .post('/api/cost', {
-          origin: 501,
-          originType: 'city',
+          origin: rajaongkirConfig.subdistrict.subdistrict_id,
+          originType: 'subdistrict',
           destination,
           destinationType: 'subdistrict',
           weight: 1000,
-          courier: 'jne:tiki:pos:ninja',
+          courier: rajaongkirConfig.couriers.join(':'),
         })
         .then((response) => {
           const {

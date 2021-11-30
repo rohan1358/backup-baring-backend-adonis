@@ -8,6 +8,8 @@ import Database from '@ioc:Adonis/Lucid/Database'
 import CheckoutDetail from 'App/Models/CheckoutDetail'
 import { validator } from '@ioc:Adonis/Core/Validator'
 import makeQuery from 'App/Helpers/makeQuery'
+import Application from '@ioc:Adonis/Core/Application'
+import fs from 'fs'
 
 export default class CheckoutsController {
   private _getProduct(id) {
@@ -122,13 +124,17 @@ export default class CheckoutsController {
   }
 
   private _getShippingCost(courier, service, weight, destination) {
+    const rajaongkirConfig = JSON.parse(
+      fs.readFileSync(Application.makePath('app/Services/rajaongkir.json')) as any
+    )
+
     return new Promise((resolve) => {
       axios
         .post(
           'https://pro.rajaongkir.com/api/cost',
           {
-            origin: 501,
-            originType: 'city',
+            origin: rajaongkirConfig.subdistrict.subdistrict_id,
+            originType: 'subdistrict',
             destination,
             destinationType: 'subdistrict',
             weight,

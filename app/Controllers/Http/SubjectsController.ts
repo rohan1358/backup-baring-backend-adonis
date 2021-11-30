@@ -10,9 +10,12 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 export default class SubjectsController {
   private _infiniteLoad(query) {
-    query.select('id', 'title').preload('childs', (query) => {
-      this._infiniteLoad(query)
-    })
+    query
+      .select('id', 'title')
+      .orderBy('created_at', 'asc')
+      .preload('childs', (query) => {
+        this._infiniteLoad(query)
+      })
   }
 
   private async _create({ params, request }: HttpContextContract, inParent: boolean = false) {
@@ -303,6 +306,7 @@ export default class SubjectsController {
           .andOnVal('boosts.user_id', auth.use('userApi').user?.id!)
       })
       .withCount('comments')
+      .orderBy('created_at', 'asc')
 
     let subject = await subjectQuery.firstOrFail()
     if (auth.use('userApi').isLoggedIn) {
