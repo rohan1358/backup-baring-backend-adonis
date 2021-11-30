@@ -100,7 +100,7 @@ export default class AuthController {
 
         await newUser.useTransaction(trx).save()
         if (Object.keys(courses).length) {
-          await newUser.useTransaction(trx).related('courses').attach(courses)
+          await newUser.useTransaction(trx).related('courses').sync(courses)
         }
         await this._userLoginLog(newUser.id, trx)
 
@@ -125,7 +125,7 @@ export default class AuthController {
         user.email = email
         await user.useTransaction(trx).save()
         if (Object.keys(courses).length) {
-          await user.useTransaction(trx).related('courses').attach(courses)
+          await user.useTransaction(trx).related('courses').sync(courses)
         }
 
         if (user.subscriptionEnd && moment(user.subscriptionEnd).toDate() <= new Date()) {
