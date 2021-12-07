@@ -28,6 +28,12 @@ export default class ProductsController {
     }
   }
 
+  public async delete({ params }: HttpContextContract) {
+    const product = await Product.findOrFail(params.id)
+    await product.delete()
+    return product.serialize()
+  }
+
   public async changeCover({ request, params }: HttpContextContract) {
     const { cover } = await request.validate({
       schema: schema.create({

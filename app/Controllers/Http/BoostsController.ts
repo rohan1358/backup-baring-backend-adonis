@@ -2,6 +2,7 @@ import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import Subject from 'App/Models/Subject'
 import { schema } from '@ioc:Adonis/Core/Validator'
 import Boost from 'App/Models/Boost'
+import User from 'App/Models/User'
 
 export default class BoostsController {
   public async create({ auth, params, request }: HttpContextContract) {
@@ -32,7 +33,13 @@ export default class BoostsController {
 
     await boost.save()
 
-    return boost.toJSON()
+    return {
+      ...boost.toJSON(),
+      user: await User.query()
+        .select('id', 'avatar')
+        .where('id', auth.use('userApi').user?.id!)
+        .first(),
+    }
   }
   public async index({ auth, params }: HttpContextContract) {
     const subject = await Subject.query()
@@ -43,8 +50,22 @@ export default class BoostsController {
         })
       })
       .firstOrFail()
-    const boosts = await Boost.query().where('boosts.subject_id', subject.id)
 
-    return boosts.map((boost) => boost.toJSON())
+    const ids: number[] = []
+    const boosts = (await Boost.query().where('boosts.subject_id', subject.id)).map((boost) => {
+      if (!ids.includes(boost.userId)) {
+        ids.push(boost.userId)
+      }
+      return boost.serialize()
+    })
+    const users = await User.query().select('id', 'avatar').whereIn('id', ids)
+
+    return boosts.map((boost) => {
+      const user = users.find((el) => Number(el.id) === boost.user_id)
+      return {
+        ...boost,
+        user: user ? user.serialize() : null,
+      }
+    })
   }
 }

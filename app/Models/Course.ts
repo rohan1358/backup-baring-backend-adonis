@@ -78,5 +78,10 @@ export default class Course extends BaseModel {
     if (course.cover) {
       await s3.send(new DeleteObjectCommand({ Key: course.cover, Bucket: 'cover-online-course' }))
     }
+
+    const subject = await Subject.findBy('course_id', course.id)
+    if (subject) {
+      subject.delete()
+    }
   }
 }

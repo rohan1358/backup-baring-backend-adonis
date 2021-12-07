@@ -10,6 +10,7 @@ import {
 } from '@ioc:Adonis/Lucid/Orm'
 import { DateTime } from 'luxon'
 import Boost from './Boost'
+import Checkout from './Checkout'
 import Comment from './Comment'
 import Course from './Course'
 import Like from './Like'
@@ -64,6 +65,9 @@ export default class User extends BaseModel {
 
   @hasMany(() => Like)
   public liked: HasMany<typeof Like>
+
+  @hasMany(() => Checkout)
+  public checkouts: HasMany<typeof Checkout>
 
   @manyToMany(() => Course, { pivotTable: 'member_course' })
   public courses: ManyToMany<typeof Course>

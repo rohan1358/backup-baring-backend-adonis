@@ -12,6 +12,14 @@ export default class ConfigsController {
     return rajaongkirConfig
   }
 
+  public async getConfig() {
+    const config = JSON.parse(
+      fs.readFileSync(Application.makePath('app/Services/config.json')) as any
+    )
+
+    return config
+  }
+
   public async setRajaongkir({ request }: HttpContextContract) {
     const { subdistrict, couriers } = await request.validate({
       schema: schema.create({
@@ -38,6 +46,27 @@ export default class ConfigsController {
     return {
       subdistrict,
       couriers,
+    }
+  }
+
+  public async setConfig({ request }: HttpContextContract) {
+    const { stickyCategory, paymentText } = await request.validate({
+      schema: schema.create({
+        stickyCategory: schema.array().members(schema.number()),
+        paymentText: schema.string(),
+      }),
+    })
+
+    const stringify = JSON.stringify({
+      stickyCategory,
+      paymentText,
+    })
+
+    fs.writeFileSync(Application.makePath('app/Services/config.json'), stringify)
+
+    return {
+      stickyCategory,
+      paymentText,
     }
   }
 }

@@ -337,6 +337,12 @@ Route.group(() => {
         cast: (id) => Number(id),
       })
       .middleware('auth:userApi,adminApi')
+    Route.delete('/:id', 'ProductsController.delete')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware(['auth:adminApi', 'adminRole:super'])
     Route.get('/', 'ProductsController.index').middleware('auth:userApi,adminApi')
   }).prefix('/product')
 
@@ -359,12 +365,27 @@ Route.group(() => {
     .middleware(['auth:userApi,adminApi', 'adminRole:super'])
 
   Route.group(() => {
+    Route.put('/resi/:id', 'CheckoutsController.insertResi').middleware([
+      'auth:adminApi',
+      'adminRole:super',
+    ])
+    Route.put('/status/:id', 'CheckoutsController.changeStatus').middleware([
+      'auth:adminApi',
+      'adminRole:super',
+    ])
+
+    Route.get('/get-print', 'CheckoutsController.requestPrint').middleware([
+      'auth:adminApi',
+      'adminRole:super',
+    ])
+    Route.get('/print', 'CheckoutsController.print').as('print')
     Route.get('/list', 'CheckoutsController.list').middleware('auth:userApi')
     Route.get('/:id', 'CheckoutsController.read').middleware([
       'auth:userApi,adminApi',
       'adminRole:super',
     ])
     Route.post('/', 'CheckoutsController.create').middleware('auth:userApi')
+    Route.get('/', 'CheckoutsController.index').middleware(['auth:adminApi', 'adminRole:super'])
   }).prefix('/checkout')
 
   Route.group(() => {
@@ -380,5 +401,7 @@ Route.group(() => {
       'auth:adminApi',
       'adminRole:super',
     ])
+    Route.get('/', 'ConfigsController.getConfig')
+    Route.post('/', 'ConfigsController.setConfig').middleware(['auth:adminApi', 'adminRole:super'])
   }).prefix('config')
 }).prefix('/api')

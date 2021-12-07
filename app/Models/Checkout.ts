@@ -34,11 +34,17 @@ export default class Checkout extends BaseModel {
   @column()
   public invoiceId: number
 
-  @belongsTo(() => User)
-  public user: BelongsTo<typeof User>
+  @column()
+  public resi: string
+
+  @column()
+  public status: number
 
   @hasMany(() => CheckoutDetail)
   public items: HasMany<typeof CheckoutDetail>
+
+  @belongsTo(() => User)
+  public user: BelongsTo<typeof User>
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime

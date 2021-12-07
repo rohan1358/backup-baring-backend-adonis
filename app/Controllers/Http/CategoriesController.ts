@@ -1,5 +1,7 @@
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import Database from '@ioc:Adonis/Lucid/Database'
+import fs from 'fs'
+import Application from '@ioc:Adonis/Core/Application'
 
 import Category from 'App/Models/Category'
 
@@ -11,15 +13,23 @@ export default class CategoriesController {
   }
 
   public async contentGroupByCategory({ auth }: HttpContextContract) {
-    const categories = await Category.query()
+    const config = JSON.parse(
+      fs.readFileSync(Application.makePath('app/Services/config.json')) as any
+    )
+
+    let categories = Category.query()
       .withCount('contents')
       .has('contents')
       .orderBy('contents_count', 'desc')
       .limit(4)
 
+    if (config.stickyCategory && config.stickyCategory.length) {
+      categories = Category.query().whereIn('id', config.stickyCategory)
+    }
+
     let response: Object[] = []
 
-    for (let category of categories) {
+    for (let category of await categories) {
       await category.load('contents', (query) => {
         query
           .select(

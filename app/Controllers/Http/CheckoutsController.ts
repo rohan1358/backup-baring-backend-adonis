@@ -10,6 +10,10 @@ import { validator } from '@ioc:Adonis/Core/Validator'
 import makeQuery from 'App/Helpers/makeQuery'
 import Application from '@ioc:Adonis/Core/Application'
 import fs from 'fs'
+import User from 'App/Models/User'
+import PDFDocument from 'pdfkit'
+import { PassThrough } from 'stream'
+import Route from '@ioc:Adonis/Core/Route'
 
 export default class CheckoutsController {
   private _getProduct(id) {
@@ -297,6 +301,7 @@ export default class CheckoutsController {
       checkout.total = total + uniqueNumber
       checkout.detail = detail
       checkout.isPaid = false
+      checkout.status = 0
       checkout.userId = auth.use('userApi').user?.id!
 
       await Cart.query().useTransaction(t).whereIn('id', cartDeleted).delete()
@@ -365,5 +370,163 @@ export default class CheckoutsController {
       ...checkout.serialize(),
       items: (await checkout.related('items').query()).map((item) => item.serialize()),
     }
+  }
+
+  public async index({ request }: HttpContextContract) {
+    const { page } = await validator.validate({
+      schema: schema.create({
+        page: schema.number.optional(),
+      }),
+      data: request.all(),
+    })
+
+    const limit = 10
+    const offset = (page ? page - 1 : 0) * limit
+
+    const ids: number[] = []
+    const total = await Checkout.query().count('* as total')
+    const checkouts = (
+      await Checkout.query().offset(offset).limit(limit).orderBy('created_at', 'desc')
+    ).map((checkout) => {
+      if (!ids.includes(checkout.userId)) {
+        ids.push(checkout.userId)
+      }
+
+      return checkout.serialize()
+    })
+    const users = await User.query().select('id', 'fullname').whereIn('id', ids)
+
+    return {
+      total: Math.ceil(Number(total[0]?.$original.total || '0') / limit),
+      data: checkouts.map((checkout) => ({
+        ...checkout,
+        user: users.find((el) => (el.id = checkout.user_id)),
+      })),
+    }
+  }
+
+  public async insertResi({ params, request, response }: HttpContextContract) {
+    const checkout = await Checkout.findOrFail(params.id)
+    const { resi } = await request.validate({
+      schema: schema.create({
+        resi: schema.string(),
+      }),
+    })
+
+    const detail = checkout.detail ? JSON.parse(checkout.detail as string) : {}
+
+    if (!detail.shipping || !checkout.isPaid) {
+      return response.badRequest()
+    }
+
+    checkout.resi = resi
+    if (checkout.status === 1) {
+      checkout.status = 2
+    }
+    await checkout.save()
+
+    return checkout.serialize()
+  }
+
+  public async changeStatus({ params, request, response }: HttpContextContract) {
+    const checkout = await Checkout.findOrFail(params.id)
+    const { status } = await request.validate({
+      schema: schema.create({
+        status: schema.number(),
+      }),
+    })
+
+    if (!checkout.isPaid) {
+      return response.badRequest()
+    }
+
+    checkout.status = status
+    await checkout.save()
+
+    return checkout.serialize()
+  }
+
+  public async requestPrint() {
+    return {
+      url: Route.makeSignedUrl('print', {
+        expiresIn: '30m',
+      }),
+    }
+  }
+
+  public async print({ response, request }: HttpContextContract) {
+    if (!request.hasValidSignature()) {
+      return response.methodNotAllowed()
+    }
+
+    const checkouts = (
+      await Checkout.query()
+        .whereNot('status', 3)
+        .whereNot('status', 0)
+        .whereHas('items', (query) => {
+          query.whereNotNull('checkout_details.product_id')
+        })
+    ).map((checkout) => checkout.serialize())
+    const file = new PassThrough()
+    const doc = new PDFDocument({ size: 'A4' })
+
+    const width = 243.64
+    const height = 140
+
+    let counts = 0
+    let x = 56
+    let y = 56
+
+    for (let item of checkouts) {
+      counts = counts + 1
+
+      doc.rect(x - 6, y - 6, width, height).stroke()
+
+      doc.text('Nama', x, y)
+      doc.moveUp()
+      doc.text(':', x + 44)
+      doc.moveUp()
+      doc.text('', x + 54)
+      doc.text(item.detail?.shipping?.recipient_name, { width: 177.64 })
+
+      doc.text('HP', x)
+      doc.moveUp()
+      doc.text(':', x + 44)
+      doc.moveUp()
+      doc.text('', x + 54)
+      doc.text(item.detail?.shipping?.recipient_phone, { width: 177.64 })
+
+      doc.text('Alamat', x)
+      doc.moveUp()
+      doc.text(':', x + 44)
+      doc.moveUp()
+      doc.text('', x + 54)
+      doc.text(item.detail?.shipping?.destination, { width: 177.64 })
+
+      doc.text('Kurir', x)
+      doc.moveUp()
+      doc.text(':', x + 44)
+      doc.moveUp()
+      doc.text('', x + 54)
+      doc.text(item.detail?.shipping?.shipping_service, { width: 177.64 })
+
+      const yChecking = Math.floor(counts / 2)
+      if (!(counts % 2 === 0)) {
+        x = width + 64
+      } else {
+        x = 56
+        y = 50 + yChecking * (height + 8) + 6
+      }
+      if (counts % 10 === 0) {
+        doc.addPage({ size: 'A4' })
+        x = 56
+        y = 56
+      }
+    }
+
+    doc.pipe(file)
+    doc.end()
+
+    response.stream(file)
   }
 }

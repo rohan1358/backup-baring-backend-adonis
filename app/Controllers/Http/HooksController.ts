@@ -43,11 +43,8 @@ export default class HooksController {
     const checkout = await Checkout.findByOrFail('invoice_id', invoiceId)
     const user = await checkout.related('user').query().firstOrFail()
 
-    const items = await checkout
-      .related('items')
-      .query()
-      .preload('course')
-      .whereNotNull('course_id')
+    let force = true
+    const items = await checkout.related('items').query().preload('course')
     const results = await Database.transaction(async (t) => {
       const courses: any = {}
       const subscription = ((await this._getInvoice(user.username)) || {}) as object
@@ -58,10 +55,13 @@ export default class HooksController {
             mentor: false,
             subscription_end: subscription[item.course.amemberId],
           }
+        } else if (!item.course) {
+          force = false
         }
       }
 
       checkout.isPaid = true
+      checkout.status = force ? 3 : 1
 
       await user.useTransaction(t).related('courses').sync(courses)
       await checkout.useTransaction(t).save()

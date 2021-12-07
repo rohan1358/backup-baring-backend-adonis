@@ -106,5 +106,16 @@ export default class Subject extends BaseModel {
     if (subject.video) {
       await s3.send(new DeleteObjectCommand({ Key: subject.video, Bucket: 'video-online-course' }))
     }
+    if (subject.pdf) {
+      await s3.send(new DeleteObjectCommand({ Key: subject.pdf, Bucket: 'pdf-course' }))
+    }
+    if (subject.audio) {
+      await s3.send(new DeleteObjectCommand({ Key: subject.audio, Bucket: 'audio-course' }))
+    }
+
+    const child = await Subject.findBy('parent_id', subject.id)
+    if (child) {
+      subject.delete()
+    }
   }
 }
