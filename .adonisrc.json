@@ -24,6 +24,7 @@
   "providers": ["./providers/AppProvider", "@adonisjs/core", "@adonisjs/lucid", "@adonisjs/auth"],
   "aceProviders": ["@adonisjs/repl"],
   "metaFiles": [
+    ".env",
     {
       "pattern": "public/**",
       "reloadServer": false
