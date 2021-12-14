@@ -1,4 +1,4 @@
-import { PutObjectCommand } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { schema, validator } from '@ioc:Adonis/Core/Validator'
 import Database from '@ioc:Adonis/Lucid/Database'
@@ -125,6 +125,110 @@ export default class ContentsController {
       authors: await content.related('authors').query(),
     }
   }
+
+  public async editContent({ request, response, params }: HttpContextContract) {
+    const content = await Content.findByOrFail('id', params.id)
+    let payload
+    try {
+      payload = await request.validate({
+        schema: schema.create({
+          title: schema.string.optional(),
+          synopsis: schema.string.optional(),
+          categories: schema.array.optional().members(schema.number()),
+          createCategories: schema.array.optional().members(schema.string()),
+          authors: schema.array.optional().members(schema.number()),
+          createAuthors: schema.array.optional().members(schema.string()),
+        }),
+      })
+    } catch (e) {
+      return response.badRequest(e.messages)
+    }
+    const {
+      title,
+      synopsis,
+      categories: categoryList,
+      createCategories,
+      authors: authorList,
+      createAuthors,
+    } = payload
+    const cover = request.file('cover', {
+      size: '2mb',
+      extnames: ['png', 'jpg', 'jpeg', 'bmp'],
+    })
+    const audio = request.file('audio', {
+      size: '100mb',
+      extnames: ['mp3', 'ogg', 'wav', 'flac', 'aac'],
+    })
+    if (title) {
+      content.title = title
+    }
+    if (synopsis) {
+      content.synopsis = synopsis
+    }
+    if (cover) {
+      const fileName = `${cuid()}.${cover.extname}`
+      await s3.send(new DeleteObjectCommand({ Key: content.cover, Bucket: 'covers-01' }))
+      await s3.send(
+        new PutObjectCommand({
+          Key: fileName,
+          Bucket: 'covers-01',
+          Body: fs.createReadStream(cover.tmpPath!),
+        })
+      )
+      content.cover = fileName
+    }
+    if (audio) {
+      const audioFileName = `${cuid()}.${audio.extname}`
+      if (content.audio) {
+        await s3.send(new DeleteObjectCommand({ Key: content.audio, Bucket: 'plot-audio-01' }))
+      }
+      await s3.send(
+        new PutObjectCommand({
+          Key: audioFileName,
+          Bucket: 'plot-audio-01',
+          Body: fs.createReadStream(audio.tmpPath!),
+        })
+      )
+      content.cover = audioFileName
+    }
+    await content.save()
+    if (categoryList?.length) {
+      const categories = await Category.query().whereIn('id', categoryList)
+      const validCategories: number[] = []
+      for (let category of categories) {
+        validCategories.push(category.id)
+      }
+      await content.related('categories').sync(validCategories)
+    }
+    if (createCategories?.length) {
+      const newCategoriesData: object[] = []
+      for (let categoryName of createCategories) {
+        newCategoriesData.push({ name: categoryName })
+      }
+      await content.related('categories').createMany(newCategoriesData)
+    }
+    if (authorList?.length) {
+      const authors = await Author.query().whereIn('id', authorList)
+      const validAuthors: number[] = []
+      for (let author of authors) {
+        validAuthors.push(author.id)
+      }
+      await content.related('authors').sync(validAuthors)
+    }
+    if (createAuthors?.length) {
+      const newAuthorsData: object[] = []
+      for (let authorName of createAuthors) {
+        newAuthorsData.push({ name: authorName })
+      }
+      await content.related('authors').createMany(newAuthorsData)
+    }
+    return {
+      ...content.toJSON(),
+      categories: await content.related('categories').query(),
+      authors: await content.related('authors').query(),
+    }
+  }
+
   public async index({ request, auth }: HttpContextContract) {
     const { page, category: categoryId } = await validator.validate({
       schema: schema.create({

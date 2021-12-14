@@ -209,6 +209,14 @@ Route.group(() => {
     .middleware(['auth:adminApi', 'adminRole:super'])
 
   Route.group(() => {
+    Route.get('/book-was-read/:id', 'StatsController.bookWasRead').where('id', {
+      match: /^[0-9]+$/,
+      cast: (id) => Number(id),
+    })
+    Route.get('/user-access/:id', 'StatsController.userAccess').where('id', {
+      match: /^[0-9]+$/,
+      cast: (id) => Number(id),
+    })
     Route.get('/daily-user-login', 'StatsController.userLogin')
     Route.get('/most-read-book', 'StatsController.mostReadBook')
     Route.get('/most-read-category', 'StatsController.mostReadCategory')
