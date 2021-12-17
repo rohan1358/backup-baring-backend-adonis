@@ -231,26 +231,9 @@ export default class CoursesController {
     return course.toJSON()
   }
 
-  public async join({ params, auth, response }: HttpContextContract) {
-    let course = await Course.query()
-      .where('courses.id', params.id)
-      .andWhereHas('users', (query) => {
-        query.where('users.id', auth.use('userApi').user?.id!)
-      })
-      .first()
-
-    if (course) {
-      return response.badRequest()
-    }
-
-    course = await Course.findByOrFail('id', params.id)
-
-    await course.related('users').attach({
-      [auth.use('userApi').user?.id!]: {
-        mentor: false,
-      },
-    })
-
-    return 'Join success'
+  public async delete({ params }: HttpContextContract) {
+    const course = await Course.findOrFail(params.id)
+    await course.delete()
+    return course.serialize()
   }
 }

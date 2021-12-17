@@ -173,6 +173,13 @@ Route.group(() => {
       })
       .middleware(['auth:adminApi', 'adminRole:super'])
 
+    Route.delete('/:id', 'CoursesController.delete')
+      .middleware(['auth:adminApi', 'adminRole:super'])
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+
     Route.post('/:id', 'SubjectsController.createWithoutParent')
       .middleware(['auth:adminApi', 'adminRole:super'])
       .where('id', {
