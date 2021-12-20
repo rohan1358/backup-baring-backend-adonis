@@ -419,4 +419,10 @@ Route.group(() => {
     Route.get('/', 'ConfigsController.getConfig')
     Route.post('/', 'ConfigsController.setConfig').middleware(['auth:adminApi', 'adminRole:super'])
   }).prefix('config')
+
+  Route.group(() => {
+    Route.get('/package', 'SubscriptionsController.packageList')
+  })
+    .prefix('/subscription')
+    .middleware('auth:userApi')
 }).prefix('/api')

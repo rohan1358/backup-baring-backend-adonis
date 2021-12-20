@@ -67,6 +67,13 @@ export default class BabsController {
     }
   }
   public async read({ params, response, auth }: HttpContextContract) {
+    if (auth.use('userApi').isLoggedIn) {
+      const user = auth.use('userApi').user!
+
+      if (!user.subscriptionEnd || user.subscriptionEnd.toJSDate() < new Date()) {
+        return response.methodNotAllowed()
+      }
+    }
     const bab = await Bab.query()
       .preload('content', (query) => {
         query.select('id', 'title', 'cover').preload('babs', (query) => {
