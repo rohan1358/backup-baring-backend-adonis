@@ -70,7 +70,9 @@ export default class BabsController {
     if (auth.use('userApi').isLoggedIn) {
       const user = auth.use('userApi').user!
 
-      if (!user.subscriptionEnd || user.subscriptionEnd.toJSDate() < new Date()) {
+      if (!user.subscriptionEnd) {
+        return response.methodNotAllowed()
+      } else if (user.subscriptionEnd.toJSDate() < new Date()) {
         return response.methodNotAllowed()
       }
     }

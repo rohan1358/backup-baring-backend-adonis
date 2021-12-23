@@ -45,7 +45,7 @@ export default class User extends BaseModel {
   @column()
   public email: string
 
-  @column()
+  @column.dateTime()
   public subscriptionEnd: DateTime
 
   @column()
