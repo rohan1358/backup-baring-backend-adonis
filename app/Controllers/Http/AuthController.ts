@@ -11,6 +11,7 @@ import LoginLog from 'App/Models/LoginLog'
 import Partner from 'App/Models/Partner'
 import Database from '@ioc:Adonis/Lucid/Database'
 import Course from 'App/Models/Course'
+import { DateTime } from 'luxon'
 
 export default class AuthController {
   private async _userLoginLog(id: number, trx) {
@@ -192,8 +193,25 @@ export default class AuthController {
     if (axiosResponse.data.error) {
       return response.badRequest()
     }
-
     const [registered] = axiosResponse.data
+
+    try {
+      const addAccess = await axios.post(
+        `${Env.get('AMEMBER_URL')}/api/access`,
+        makeQuery({
+          _key: 'xxxxxxx',
+          user_id: registered.user_id,
+          product_id: 6,
+          begin_date: DateTime.now().toFormat('yyyy-LL-dd'), // Today
+          expire_date: DateTime.now().plus({ days: 7 }).toFormat('yyyy-LL-dd'), // Lifetime
+        }).string()
+      )
+      if (addAccess.data.error) {
+        throw new Error()
+      }
+    } catch (e) {
+      return response.internalServerError()
+    }
 
     const user: User = await Database.transaction(async (trx) => {
       const user = new User()
@@ -201,6 +219,9 @@ export default class AuthController {
       user.fullname = fullname
       user.username = username
       user.email = email
+      user.haveTrial = false
+      user.inTrial = true
+      user.subscriptionEnd = DateTime.now().plus({ days: 7 })
 
       await user.useTransaction(trx).save()
       await this._userLoginLog(user.id, trx)
@@ -212,7 +233,7 @@ export default class AuthController {
       fullname,
       amember_id: user.amemberId,
       token: (await auth.use('userApi').generate(user)).token,
-      subscriber: false,
+      subscriber: true,
       partner_id: user.partnerId,
     }
   }

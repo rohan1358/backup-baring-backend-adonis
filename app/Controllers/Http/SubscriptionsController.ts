@@ -5,8 +5,15 @@ import Env from '@ioc:Adonis/Core/Env'
 import makeQuery from 'App/Helpers/makeQuery'
 
 export default class SubscriptionsController {
-  public async packageList({ response }: HttpContextContract) {
-    let axiosResponse: any = {}
+  public async packageList({ response, auth }: HttpContextContract) {
+    let axiosResponse: any = {},
+      haveTrial = false
+
+    if (auth.use('userApi').isLoggedIn) {
+      if (auth.use('userApi').user?.haveTrial && !auth.use('userApi').user?.inTrial) {
+        haveTrial = true
+      }
+    }
     try {
       axiosResponse = await axios.get(
         `${Env.get('AMEMBER_URL')}/api/products?${makeQuery({
@@ -29,7 +36,8 @@ export default class SubscriptionsController {
 
       if (
         detail.nested &&
-        detail.nested['product-product-category'][0]?.product_category_id === '1'
+        detail.nested['product-product-category'][0]?.product_category_id === '1' &&
+        !(detail.product_id === 6 && !haveTrial)
       ) {
         products.push({
           id: detail.product_id,

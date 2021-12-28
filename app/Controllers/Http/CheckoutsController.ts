@@ -287,10 +287,14 @@ export default class CheckoutsController {
       }
     }
 
-    let uniqueNumber = this._randUnique()
-    while (Boolean(await this._checkTotalExist(total + uniqueNumber))) {
+    let uniqueNumber = 0
+    if (total > 0) {
       uniqueNumber = this._randUnique()
+      while (Boolean(await this._checkTotalExist(total + uniqueNumber))) {
+        uniqueNumber = this._randUnique()
+      }
     }
+
     detail.payment = {
       total,
       unique_number: uniqueNumber,

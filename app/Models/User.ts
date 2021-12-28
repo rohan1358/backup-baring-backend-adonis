@@ -54,6 +54,12 @@ export default class User extends BaseModel {
   @column()
   public isMentor: boolean
 
+  @column()
+  public inTrial: boolean
+
+  @column()
+  public haveTrial: boolean
+
   @belongsTo(() => Partner)
   public partner: BelongsTo<typeof Partner>
 
