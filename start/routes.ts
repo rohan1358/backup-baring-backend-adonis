@@ -422,6 +422,12 @@ Route.group(() => {
 
   Route.group(() => {
     Route.get('/package', 'SubscriptionsController.packageList')
+    Route.post('/:id', 'SubscriptionsController.create')
+      .where('id', {
+        match: /^[0-9]+$/,
+        cast: (id) => Number(id),
+      })
+      .middleware('auth:userApi')
   })
     .prefix('/subscription')
     .middleware('auth:userApi')

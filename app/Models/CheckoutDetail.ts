@@ -26,6 +26,9 @@ export default class CheckoutDetail extends BaseModel {
   @column()
   public productId: number
 
+  @column()
+  public isSub: boolean
+
   @belongsTo(() => Checkout)
   public checkout: BelongsTo<typeof Checkout>
 

@@ -7,6 +7,7 @@ import User from 'App/Models/User'
 import axios from 'axios'
 import Checkout from 'App/Models/Checkout'
 import Database from '@ioc:Adonis/Lucid/Database'
+import { DateTime } from 'luxon'
 
 export default class HooksController {
   private _getInvoice(login) {
@@ -24,7 +25,7 @@ export default class HooksController {
             return
           }
 
-          resolve(response.data.subscriptions)
+          resolve([response.data.subscriptions, response.data.categories])
         })
         .catch(() => {
           resolve(false)
@@ -47,7 +48,7 @@ export default class HooksController {
     const items = await checkout.related('items').query().preload('course')
     const results = await Database.transaction(async (t) => {
       const courses: any = {}
-      const subscription = ((await this._getInvoice(user.username)) || {}) as object
+      const [subscription, categories] = ((await this._getInvoice(user.username)) || {}) as any
 
       for (let item of items) {
         if (item.course && subscription[item.course.amemberId]) {
@@ -55,8 +56,18 @@ export default class HooksController {
             mentor: false,
             subscription_end: subscription[item.course.amemberId],
           }
-        } else if (!item.course) {
+        } else if (!item.course || item.isSub) {
           force = false
+        }
+
+        if (item.isSub && categories['1']) {
+          const splitDate = categories['1'].split('-')
+          user.subscriptionEnd = DateTime.fromObject({
+            year: splitDate[0],
+            month: splitDate[1],
+            day: splitDate[2],
+          })
+          await user.save()
         }
       }
 
