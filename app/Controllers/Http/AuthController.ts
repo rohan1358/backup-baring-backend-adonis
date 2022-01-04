@@ -187,6 +187,7 @@ export default class AuthController {
         }).string()
       )
     } catch (e) {
+      console.log(e)
       return response.internalServerError()
     }
 
@@ -199,7 +200,7 @@ export default class AuthController {
       const addAccess = await axios.post(
         `${Env.get('AMEMBER_URL')}/api/access`,
         makeQuery({
-          _key: 'xxxxxxx',
+          _key: Env.get('AMEMBER_KEY'),
           user_id: registered.user_id,
           product_id: 6,
           begin_date: DateTime.now().toFormat('yyyy-LL-dd'), // Today
@@ -210,6 +211,7 @@ export default class AuthController {
         throw new Error()
       }
     } catch (e) {
+      console.log(e)
       return response.internalServerError()
     }
 
@@ -284,6 +286,6 @@ export default class AuthController {
       return user
     })
 
-    return result
+    return result.serialize()
   }
 }

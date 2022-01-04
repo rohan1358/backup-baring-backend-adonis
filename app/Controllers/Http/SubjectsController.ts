@@ -12,7 +12,7 @@ export default class SubjectsController {
   private _infiniteLoad(query) {
     query
       .select('id', 'title')
-      .orderBy('created_at', 'asc')
+      .orderBy('position', 'asc')
       .preload('childs', (query) => {
         this._infiniteLoad(query)
       })
@@ -347,5 +347,21 @@ export default class SubjectsController {
 
     await subject.delete()
     return subject.toJSON()
+  }
+
+  public async arrange({ request }: HttpContextContract) {
+    const { positions } = await request.validate({
+      schema: schema.create({
+        positions: schema.array().members(
+          schema.object().members({
+            id: schema.number(),
+            position: schema.number(),
+          })
+        ),
+      }),
+    })
+
+    await Subject.updateOrCreateMany('id', positions)
+    return positions
   }
 }

@@ -249,6 +249,10 @@ Route.group(() => {
   }).prefix('/user')
 
   Route.group(() => {
+    Route.put('/arrange', 'SubjectsController.arrange').middleware([
+      'auth:adminApi',
+      'adminRole:super',
+    ])
     Route.post('/:id', 'SubjectsController.createInParent')
       .middleware(['auth:adminApi', 'adminRole:super'])
       .where('id', {

@@ -73,6 +73,9 @@ export default class Subject extends BaseModel {
   })
   public audio: string
 
+  @column()
+  public position: number
+
   @belongsTo(() => Subject, { foreignKey: 'parentId' })
   public parent: BelongsTo<typeof Subject>
 

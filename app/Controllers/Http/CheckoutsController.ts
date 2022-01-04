@@ -402,10 +402,12 @@ export default class CheckoutsController {
 
     return {
       total: Math.ceil(Number(total[0]?.$original.total || '0') / limit),
-      data: checkouts.map((checkout) => ({
-        ...checkout,
-        user: users.find((el) => (el.id = checkout.user_id)),
-      })),
+      data: checkouts.map((checkout) => {
+        return {
+          ...checkout,
+          user: users.find((el) => Number(el.id) === checkout.user_id),
+        }
+      }),
     }
   }
 

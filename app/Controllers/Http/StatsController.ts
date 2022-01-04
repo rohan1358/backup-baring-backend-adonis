@@ -82,7 +82,7 @@ export default class StatsController {
 
     let query = User.query()
       .joinRaw(
-        `LEFT JOIN (SELECT user_id,created_at FROM login_logs ORDER BY created_at DESC LIMIT 1) as logs ON logs.user_id = users.id`
+        `LEFT JOIN (SELECT DISTINCT ON (user_id) user_id,created_at FROM login_logs ORDER BY user_id,created_at DESC) as logs ON logs.user_id = users.id`
       )
       .select('users.*', 'logs.created_at as last_login')
       .orderBy('fullname', 'asc')

@@ -1,12 +1,12 @@
+import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import { cuid } from '@ioc:Adonis/Core/Helpers'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { schema, validator } from '@ioc:Adonis/Core/Validator'
 import Database from '@ioc:Adonis/Lucid/Database'
-import Course from 'App/Models/Course'
-import { cuid } from '@ioc:Adonis/Core/Helpers'
 import s3 from 'App/Helpers/s3'
-import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
-import fs from 'fs'
+import Course from 'App/Models/Course'
 import User from 'App/Models/User'
+import fs from 'fs'
 
 export default class CoursesController {
   private _infiniteLoad(query, first = false) {

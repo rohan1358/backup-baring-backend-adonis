@@ -67,6 +67,7 @@ export default class HooksController {
             month: splitDate[1],
             day: splitDate[2],
           })
+          user.inTrial = false
           await user.save()
         }
       }
