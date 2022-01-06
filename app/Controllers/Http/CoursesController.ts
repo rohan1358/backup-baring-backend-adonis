@@ -10,7 +10,7 @@ import fs from 'fs'
 
 export default class CoursesController {
   private _infiniteLoad(query, first = false) {
-    query.select('id', 'title').preload('childs', (query) => {
+    query.select('id', 'title','position').orderBy('position','asc').preload('childs', (query) => {
       this._infiniteLoad(query)
     })
     if (first) {
