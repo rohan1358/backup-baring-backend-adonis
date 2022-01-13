@@ -234,7 +234,9 @@ export default class CheckoutsController {
     }
 
     if (weight === 0 && withShipping) {
-      return response.badRequest()
+      return response.badRequest({
+        error: 'Berat belum diatur',
+      })
     }
 
     const {
@@ -257,7 +259,9 @@ export default class CheckoutsController {
     if (withShipping) {
       const subdistrict: any = await this._getSubdistricts(destination_rajaongkir)
       if (!subdistrict) {
-        return response.badRequest()
+        return response.badRequest({
+          error: 'Subdistrict tidak ditemukan',
+        })
       }
 
       const splitShipping: string[] = shipping_service?.split('-')!
@@ -265,13 +269,17 @@ export default class CheckoutsController {
       const service = splitShipping[1] ? splitShipping[1].trim() : false
 
       if (!service) {
-        return response.badRequest()
+        return response.badRequest({
+          error: 'Service tidak ditemukan',
+        })
       }
 
       const cost = await this._getShippingCost(courier, service, weight, destination_rajaongkir)
 
       if (!cost) {
-        return response.badRequest()
+        return response.badRequest({
+          error: 'Gagal mendapatkan ongkos kirim',
+        })
       }
 
       total = total + Number(cost)
