@@ -320,8 +320,8 @@ export default class ContentsController {
     return { ...content.toJSON(), categories, authors }
   }
 
-  public async fullContent({ params, response }: HttpContextContract) {
-    const content = await Content.query()
+  public async fullContent({ params, response, auth }: HttpContextContract) {
+    let contentQuery = Content.query()
       .where('id', params.id)
       .preload('authors', (query) => {
         query.select('id', 'name')
@@ -332,7 +332,18 @@ export default class ContentsController {
       .preload('babs', (query) => {
         query.select('id', 'title').orderBy('created_at', 'asc')
       })
-      .first()
+
+    contentQuery = contentQuery.select(
+      '*',
+      Database.from('likes')
+        .select(Database.raw(`CASE WHEN likes.id IS NULL THEN FALSE ELSE TRUE END as status`))
+        .whereColumn('likes.content_id', 'contents.id')
+        .andWhere('likes.user_id', auth.use('userApi').user?.id || 0)
+        .limit(1)
+        .as('is_liked')
+    )
+
+    const content = await contentQuery.first()
 
     if (!content) {
       return response.notFound('Content not found')
