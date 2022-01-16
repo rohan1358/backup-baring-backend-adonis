@@ -298,7 +298,7 @@ export default class SubjectsController {
         this._infiniteLoad(query)
       })
       .preload('course', (query) => {
-        query.select('id', 'title')
+        query.select('id', 'title',"cover")
       })
       .leftOuterJoin('boosts', (query) => {
         query
