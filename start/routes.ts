@@ -435,4 +435,12 @@ Route.group(() => {
   })
     .prefix('/subscription')
     .middleware('auth:userApi')
+
+  Route.group(() => {
+    Route.delete('/:id', 'ClipsController.delete')
+    Route.post('/', 'ClipsController.create')
+    Route.get('/', 'ClipsController.index')
+  })
+    .prefix('/clip')
+    .middleware('auth:userApi')
 }).prefix('/api')
