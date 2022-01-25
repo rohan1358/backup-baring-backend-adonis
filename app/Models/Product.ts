@@ -1,7 +1,8 @@
 import { DateTime } from 'luxon'
-import { afterDelete, BaseModel, column } from '@ioc:Adonis/Lucid/Orm'
+import { afterCreate, afterDelete, BaseModel, column } from '@ioc:Adonis/Lucid/Orm'
 import s3 from 'App/Helpers/s3'
 import { DeleteObjectCommand } from '@aws-sdk/client-s3'
+import Firebase from 'App/Helpers/notification'
 
 export default class Product extends BaseModel {
   @column({ isPrimary: true })
@@ -43,5 +44,17 @@ export default class Product extends BaseModel {
     if (product.cover) {
       await s3.send(new DeleteObjectCommand({ Key: product.cover, Bucket: 'product-images' }))
     }
+  }
+
+  @afterCreate()
+  public static async afterCreateProduct(product: Product) {
+    Firebase.messaging()
+      .sendToTopic('newProduct', {
+        notification: {
+          title: 'Produk Baru',
+          body: product.title,
+        },
+      })
+      .then(() => {})
   }
 }

@@ -243,6 +243,7 @@ Route.group(() => {
   }).prefix('/hook')
 
   Route.group(() => {
+    Route.put('/token', 'UsersController.setFcm').middleware('auth:userApi')
     Route.put('/change-profile', 'UsersController.editProfile').middleware('auth:userApi')
     Route.get('/:id', 'UsersController.read')
     Route.get('/', 'UsersController.index').middleware('auth:adminApi,userApi')

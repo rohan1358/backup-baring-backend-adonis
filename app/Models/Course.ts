@@ -1,4 +1,5 @@
 import {
+  afterCreate,
   afterDelete,
   BaseModel,
   beforeDelete,
@@ -14,6 +15,7 @@ import Subject from './Subject'
 import s3 from 'App/Helpers/s3'
 import { DeleteObjectCommand } from '@aws-sdk/client-s3'
 import Review from './Review'
+import Firebase from 'App/Helpers/notification'
 
 export default class Course extends BaseModel {
   @column({ isPrimary: true })
@@ -83,5 +85,17 @@ export default class Course extends BaseModel {
     if (subject) {
       subject.delete()
     }
+  }
+
+  @afterCreate()
+  public static async afterCreateCourse(course: Course) {
+    Firebase.messaging()
+      .sendToTopic('newCourse', {
+        notification: {
+          title: 'Online Course Baru',
+          body: course.title,
+        },
+      })
+      .then(() => {})
   }
 }

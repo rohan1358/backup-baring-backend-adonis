@@ -11,6 +11,7 @@ import {
 import { DateTime } from 'luxon'
 import Boost from './Boost'
 import Checkout from './Checkout'
+import Clip from './Clip'
 import Comment from './Comment'
 import Course from './Course'
 import Like from './Like'
@@ -60,6 +61,11 @@ export default class User extends BaseModel {
   @column()
   public haveTrial: boolean
 
+  @column({
+    serializeAs: null,
+  })
+  public fcmToken: string
+
   @belongsTo(() => Partner)
   public partner: BelongsTo<typeof Partner>
 
@@ -86,6 +92,9 @@ export default class User extends BaseModel {
 
   @hasMany(() => Review)
   public reviews: HasMany<typeof Review>
+
+  @hasMany(() => Clip)
+  public clips: HasMany<typeof Clip>
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime

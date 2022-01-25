@@ -117,4 +117,18 @@ export default class UsersController {
 
     return result.serialize()
   }
+
+  public async setFcm({ auth, request }: HttpContextContract) {
+    const { token } = await request.validate({
+      schema: schema.create({
+        token: schema.string(),
+      }),
+    })
+
+    const user = auth.use('userApi').user!
+
+    user.fcmToken = token
+    await user.save()
+    return user.serialize()
+  }
 }

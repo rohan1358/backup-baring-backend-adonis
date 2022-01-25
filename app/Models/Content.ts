@@ -8,6 +8,7 @@ import {
   manyToMany,
   ManyToMany,
   afterDelete,
+  afterCreate,
 } from '@ioc:Adonis/Lucid/Orm'
 import Bab from './Bab'
 import Category from './Category'
@@ -15,6 +16,7 @@ import s3 from 'App/Helpers/s3'
 import { DeleteObjectCommand } from '@aws-sdk/client-s3'
 import Author from './Author'
 import Like from './Like'
+import Firebase from 'App/Helpers/notification'
 
 export default class Content extends BaseModel {
   @column({ isPrimary: true })
@@ -75,6 +77,18 @@ export default class Content extends BaseModel {
     const bab = await Bab.findBy('content_id', content.id)
 
     await bab?.delete()
+  }
+
+  @afterCreate()
+  public static async afterCreateContent(content: Content) {
+    Firebase.messaging()
+      .sendToTopic('newRelease', {
+        notification: {
+          title: 'Rilisan Baru',
+          body: content.title,
+        },
+      })
+      .then(() => {})
   }
 
   @afterDelete()
