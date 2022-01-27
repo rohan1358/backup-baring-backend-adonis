@@ -46,13 +46,13 @@ export default class CheckoutsController {
     return Math.floor(Math.random() * (999 - 100 + 1) + 100)
   }
 
-  private _createInvoice(userId: number, uniqueNumber: number, shipping: number, carts: Cart[]) {
+  private _createInvoice(userId: number, uniqueNumber: number, shipping: number, carts: Cart[], paysys = "moota") {
     return new Promise((resolve) => {
       ;(async () => {
         const data = {
           _key: Env.get('AMEMBER_KEY'),
           user_id: userId,
-          paysys_id: 'moota',
+          paysys_id: paysys,
           currency: 'IDR',
           first_subtotal: '0.00',
           first_discount: '0.00',
@@ -321,7 +321,8 @@ export default class CheckoutsController {
         auth.use('userApi').user?.amemberId!,
         uniqueNumber,
         detail.shipping?.cost || 0,
-        carts
+        carts,
+        total > 0 ? "moota":"free"
       )
 
       if (!invoice) {
