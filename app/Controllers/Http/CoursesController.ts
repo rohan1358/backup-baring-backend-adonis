@@ -256,7 +256,7 @@ export default class CoursesController {
         makeQuery({
           _key: Env.get('AMEMBER_KEY'),
           user_id: auth.use('userApi').user?.id!,
-          product_id: 6,
+          product_id: course.amemberId,
           begin_date: DateTime.now().toFormat('yyyy-LL-dd'), // Today
           expire_date: '2037-12-31', // Lifetime
         }).string()
