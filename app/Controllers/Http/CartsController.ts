@@ -64,6 +64,7 @@ export default class CartsController {
       }
     } else if (course_id) {
       item = await Course.findOrFail(course_id)
+      if (!item.price) return response.methodNotAllowed()
       cart = await Cart.query()
         .where('user_id', auth.use('userApi').user?.id!)
         .andWhere('course_id', item.id)

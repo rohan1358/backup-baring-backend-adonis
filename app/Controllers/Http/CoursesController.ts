@@ -6,13 +6,20 @@ import Database from '@ioc:Adonis/Lucid/Database'
 import s3 from 'App/Helpers/s3'
 import Course from 'App/Models/Course'
 import User from 'App/Models/User'
+import axios from 'axios'
 import fs from 'fs'
+import Env from '@ioc:Adonis/Core/Env'
+import makeQuery from 'App/Helpers/makeQuery'
+import { DateTime } from 'luxon'
 
 export default class CoursesController {
   private _infiniteLoad(query, first = false) {
-    query.select('id', 'title','position').orderBy('position','asc').preload('childs', (query) => {
-      this._infiniteLoad(query)
-    })
+    query
+      .select('id', 'title', 'position')
+      .orderBy('position', 'asc')
+      .preload('childs', (query) => {
+        this._infiniteLoad(query)
+      })
     if (first) {
       query.whereDoesntHave('parent')
     }
@@ -235,5 +242,38 @@ export default class CoursesController {
     const course = await Course.findOrFail(params.id)
     await course.delete()
     return course.serialize()
+  }
+
+  public async join({ params, response, auth }: HttpContextContract) {
+    const course = await Course.findOrFail(params.id)
+    if (course.price) return response.methodNotAllowed()
+
+    const result = await Database.transaction(async (t) => {
+      const courses = {} as any
+      courses[course.id] = {
+        mentor: false,
+        subscription_end: '2037-12-31',
+      }
+
+      await auth.use('userApi').user!.useTransaction(t).related('courses').sync(courses)
+
+      const addAccess = await axios.post(
+        `${Env.get('AMEMBER_URL')}/api/access`,
+        makeQuery({
+          _key: Env.get('AMEMBER_KEY'),
+          user_id: auth.use('userApi').user?.id!,
+          product_id: 6,
+          begin_date: DateTime.now().toFormat('yyyy-LL-dd'), // Today
+          expire_date: '2037-12-31', // Lifetime
+        }).string()
+      )
+      if (addAccess.data.error) {
+        throw new Error()
+      }
+
+      return course.serialize()
+    })
+
+    return result
   }
 }
