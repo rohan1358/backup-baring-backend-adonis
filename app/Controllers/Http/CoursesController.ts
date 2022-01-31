@@ -249,13 +249,7 @@ export default class CoursesController {
     if (course.price) return response.methodNotAllowed()
 
     const result = await Database.transaction(async (t) => {
-      const courses = {} as any
-      courses[course.id] = {
-        mentor: false,
-        subscription_end: '2037-12-31',
-      }
-
-      await auth.use('userApi').user!.useTransaction(t).related('courses').sync(courses)
+      await auth.use('userApi').user!.useTransaction(t).related('courses').attach([course.id])
 
       const addAccess = await axios.post(
         `${Env.get('AMEMBER_URL')}/api/access`,
