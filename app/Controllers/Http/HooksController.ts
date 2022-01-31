@@ -75,7 +75,7 @@ export default class HooksController {
       checkout.isPaid = true
       checkout.status = force ? 3 : 1
 
-      await user.useTransaction(t).related('courses').sync(courses)
+      await user.useTransaction(t).related('courses').attach(courses)
       await checkout.useTransaction(t).save()
 
       return checkout.serialize()
