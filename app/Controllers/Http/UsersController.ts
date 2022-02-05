@@ -15,7 +15,7 @@ export default class UsersController {
   private async _amemberUpdate(amemberId, payload) {
     return new Promise((resolve) => {
       axios
-        .post(
+        .put(
           `${Env.get('AMEMBER_URL')}/api/users/${amemberId}`,
           makeQuery({
             _key: Env.get('AMEMBER_KEY'),
@@ -24,7 +24,6 @@ export default class UsersController {
         )
         .then((response) => {
           if (response.data.error) {
-            console.log(response.data)
             resolve(false)
             return
           }
