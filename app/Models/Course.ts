@@ -68,6 +68,12 @@ export default class Course extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   public updatedAt: DateTime
 
+  public serializeExtras() {
+    return {
+      is_access: this.$extras.is_access,
+    }
+  }
+
   @beforeDelete()
   public static async beforeDeleteHook(course: Course) {
     const subject = await Subject.findBy('course_id', course.id)

@@ -9,14 +9,14 @@ import fs from 'fs'
 
 export default class ProductsController {
   public async index({ request }: HttpContextContract) {
-    const { page } = await validator.validate({
+    const { page, limit = 20 } = await validator.validate({
       schema: schema.create({
         page: schema.number.optional(),
+        limit: schema.number.optional(),
       }),
       data: request.all(),
     })
 
-    const limit = 10
     const offset = (page ? page - 1 : 0) * limit
 
     const total = await Product.query().count('* as total')

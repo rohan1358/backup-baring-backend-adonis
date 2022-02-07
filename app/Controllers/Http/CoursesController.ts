@@ -24,21 +24,30 @@ export default class CoursesController {
       query.whereDoesntHave('parent')
     }
   }
-  public async index({ request }: HttpContextContract) {
-    const { page } = await validator.validate({
+  public async index({ request, auth }: HttpContextContract) {
+    const { page, limit = 20 } = await validator.validate({
       schema: schema.create({
         page: schema.number.optional(),
+        limit: schema.number.optional(),
       }),
       data: request.all(),
     })
 
-    const limit = 10
     const offset = (page ? page - 1 : 0) * limit
 
     const total = await Course.query().count('* as total')
     const courses = await Course.query()
+      .select(
+        'courses.*',
+        Database.raw(`CASE WHEN member_course.id IS NULL THEN FALSE ELSE TRUE END as is_access`)
+      )
       .preload('users', (query) => {
         query.wherePivot('mentor', true)
+      })
+      .leftJoin('member_course', (query) => {
+        query
+          .on('courses.id', '=', 'member_course.course_id')
+          .andOnVal('member_course.user_id', auth.use('userApi').user?.id!)
       })
       .orderBy('created_at', 'desc')
       .limit(limit)

@@ -230,14 +230,18 @@ export default class ContentsController {
   }
 
   public async index({ request, auth }: HttpContextContract) {
-    const { page, category: categoryId } = await validator.validate({
+    const {
+      page,
+      category: categoryId,
+      limit = 20,
+    } = await validator.validate({
       schema: schema.create({
         page: schema.number.optional(),
         category: schema.number.optional(),
+        limit: schema.number.optional(),
       }),
       data: request.all(),
     })
-    const limit = 20
     const offset = (page ? page - 1 : 0) * limit
     const q = request.input('q', '')
     const liked = request.input('liked', '') ? true : false
