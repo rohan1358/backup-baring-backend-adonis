@@ -12,6 +12,11 @@ import Partner from 'App/Models/Partner'
 import Database from '@ioc:Adonis/Lucid/Database'
 import Course from 'App/Models/Course'
 import { DateTime } from 'luxon'
+import ResetPassword from 'App/Models/ResetPassword'
+import { cuid } from '@ioc:Adonis/Core/Helpers'
+import Mail from 'App/Helpers/Mail'
+import fs from 'fs'
+import Application from '@ioc:Adonis/Core/Application'
 
 export default class AuthController {
   private async _userLoginLog(id: number, trx) {
@@ -287,5 +292,100 @@ export default class AuthController {
     })
 
     return result.serialize()
+  }
+
+  private async _checkUniqueToken(token: string) {
+    const resetToken = await ResetPassword.query()
+      .where('token', token)
+      .andWhere(
+        'created_at',
+        '>=',
+        `${DateTime.now().minus({ days: 2 }).toFormat('yyyy-LL-dd')} 00:00:00`
+      )
+      .first()
+
+    if (resetToken) {
+      return true
+    } else {
+      return false
+    }
+  }
+
+  public async requestResetPass({ request }: HttpContextContract) {
+    const { email, url } = await request.validate({
+      schema: schema.create({
+        email: schema.string({}, [rules.email()]),
+        url: schema.string(),
+      }),
+    })
+
+    const user = await User.findByOrFail('email', email)
+    let token = cuid()
+    while (await this._checkUniqueToken(token)) {
+      token = cuid()
+    }
+
+    const formattedUrl = url.replace('%token%', token)
+
+    const result = await Database.transaction(async (t) => {
+      const resetPass = new ResetPassword()
+      resetPass.token = token
+      resetPass.userId = user.id
+
+      await resetPass.useTransaction(t).save()
+
+      try {
+        new Mail().send({
+          from: 'BaRing.Digital <ingat@baring.digital>',
+          to: [user.email],
+          subject: 'Pengaturan Ulang Password',
+          html: fs
+            .readFileSync(Application.makePath('app', 'Services', 'password.html'), 'utf8')
+            .replace('%fullname%', user.fullname)
+            .replace(/\%root_url\%/gm, formattedUrl),
+        })
+      } catch (e) {
+        throw new Error(e)
+      }
+
+      return {
+        success: 'Reset password request email has sent',
+      }
+    })
+
+    return result
+  }
+
+  public async resetPass({request,response}:HttpContextContract) {
+    const {token,password} = await request.validate({
+      schema: schema.create({
+        token: schema.string(),
+        password: schema.string()
+      })
+    })
+
+    const resetPass = await ResetPassword.findByOrFail("token",token);
+    const user = await User.findOrFail(resetPass.userId);
+    if(DateTime.now().diff(resetPass.createdAt,"days").days > 2) return response.notFound();
+
+    const result = await Database.transaction(async(t) => {
+      await resetPass.useTransaction(t).delete()
+
+      let axiosResponse
+
+    try {
+      axiosResponse = await axios.put(`${Env.get('AMEMBER_URL')}/api/users/${user.amemberId}?${makeQuery({
+        _key: Env.get("AMEMBER_KEY"),
+        pass: password
+      }).string()}`)
+    } catch (e) {
+      return response.internalServerError()
+    }
+
+    return "Password has changed";
+  });
+
+  return result
+
   }
 }

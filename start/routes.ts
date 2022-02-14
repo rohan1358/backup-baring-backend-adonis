@@ -26,6 +26,8 @@ Route.group(() => {
       Route.get('/get-token', 'AuthController.login')
       Route.post('/register', 'AuthController.register')
       Route.get('/verify-token', 'AuthController.verify').middleware('auth:userApi')
+      Route.post('/reset-request', 'AuthController.requestResetPass')
+      Route.post('/reset-password', 'AuthController.resetPass')
     }).prefix('/user')
 
     Route.group(() => {
