@@ -356,36 +356,39 @@ export default class AuthController {
     return result
   }
 
-  public async resetPass({request,response}:HttpContextContract) {
-    const {token,password} = await request.validate({
+  public async resetPass({ request, response }: HttpContextContract) {
+    const { token, password } = await request.validate({
       schema: schema.create({
         token: schema.string(),
-        password: schema.string()
-      })
+        password: schema.string(),
+      }),
     })
 
-    const resetPass = await ResetPassword.findByOrFail("token",token);
-    const user = await User.findOrFail(resetPass.userId);
-    if(DateTime.now().diff(resetPass.createdAt,"days").days > 2) return response.notFound();
+    const resetPass = await ResetPassword.findByOrFail('token', token)
+    const user = await User.findOrFail(resetPass.userId)
+    if (DateTime.now().diff(resetPass.createdAt, 'days').days > 2) return response.notFound()
 
-    const result = await Database.transaction(async(t) => {
+    const result = await Database.transaction(async (t) => {
       await resetPass.useTransaction(t).delete()
 
       let axiosResponse
 
-    try {
-      axiosResponse = await axios.put(`${Env.get('AMEMBER_URL')}/api/users/${user.amemberId}?${makeQuery({
-        _key: Env.get("AMEMBER_KEY"),
-        pass: password
-      }).string()}`)
-    } catch (e) {
-      return response.internalServerError()
-    }
+      try {
+        axiosResponse = await axios.put(
+          `${Env.get('AMEMBER_URL')}/api/users/${user.amemberId}?${makeQuery({
+            _key: Env.get('AMEMBER_KEY'),
+            pass: password,
+          }).string()}`
+        )
+      } catch (e) {
+        return response.internalServerError()
+      }
 
-    return "Password has changed";
-  });
+      if (!axiosResponse) return response.internalServerError()
 
-  return result
+      return 'Password has changed'
+    })
 
+    return result
   }
 }

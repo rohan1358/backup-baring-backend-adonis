@@ -263,8 +263,16 @@ export default class ContentsController {
               .whereColumn('likes.content_id', 'contents.id')
               .andWhere('likes.user_id', auth.use('userApi').user?.id || 0)
               .limit(1)
-              .as('is_liked')
+              .as('is_liked'),
+            Database.raw(`STRING_AGG(authors.name,';') as authorname`)
           )
+          .leftJoin('author_content', (query) => {
+            query.on('author_content.content_id', 'contents.id')
+          })
+          .leftJoin('authors', (query) => {
+            query.on('authors.id', 'author_content.author_id')
+          })
+          .groupBy('contents.id')
           .as('contents')
       })
       .count('* as total')
@@ -275,7 +283,8 @@ export default class ContentsController {
         'contents.title',
         'contents.cover',
         'contents.created_at',
-        Database.raw(`CASE WHEN likes.id IS NULL THEN FALSE ELSE TRUE END as is_liked`)
+        Database.raw(`CASE WHEN likes.id IS NULL THEN FALSE ELSE TRUE END as is_liked`),
+        'authorname.names'
       )
       .withCount('babs')
       .preload('authors', (query) => {
@@ -286,6 +295,11 @@ export default class ContentsController {
           .on('likes.content_id', '=', 'contents.id')
           .andOnVal('likes.user_id', auth.use('userApi').user?.id || 0)
       })
+      .joinRaw(
+        `LEFT JOIN (
+        SELECT author_content.content_id,STRING_AGG(authors.name,';') as names FROM author_content LEFT JOIN authors ON authors.id=author_content.author_id GROUP BY author_content.content_id
+      ) as authorname ON authorname.content_id=contents.id`
+      )
       .orderBy('created_at', 'desc')
       .offset(offset)
       .limit(limit)
@@ -296,8 +310,12 @@ export default class ContentsController {
         'TRUE',
       ])
     } else {
-      total = total.where('contents.title', 'iLike', `%${q}%`)
-      contents = contents.where('contents.title', 'iLike', `%${q}%`)
+      total = total
+        .where('contents.title', 'iLike', `%${q}%`)
+        .orWhere('contents.authorname', 'iLike', `%${q}%`)
+      contents = contents
+        .where('contents.title', 'iLike', `%${q}%`)
+        .orWhere('authorname.names', 'iLike', `%${q}%`)
     }
 
     if (category) {
@@ -309,7 +327,10 @@ export default class ContentsController {
       })
     }
 
-    const contentsJson = (await contents).map((content) => content.serialize())
+    const contentAw = await contents
+    console.log(contentAw)
+
+    const contentsJson = contentAw.map((content) => content.serialize())
     return {
       total: Math.ceil(Number((await total)[0].total || '0') / limit),
       data: contentsJson,
