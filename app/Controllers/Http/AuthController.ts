@@ -192,7 +192,6 @@ export default class AuthController {
         }).string()
       )
     } catch (e) {
-      console.log(e)
       return response.internalServerError()
     }
 
@@ -216,7 +215,6 @@ export default class AuthController {
         throw new Error()
       }
     } catch (e) {
-      console.log(e)
       return response.internalServerError()
     }
 

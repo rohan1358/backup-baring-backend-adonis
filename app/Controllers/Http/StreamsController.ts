@@ -12,6 +12,7 @@ import Partner from 'App/Models/Partner'
 import fs from 'fs'
 import Application from '@ioc:Adonis/Core/Application'
 import User from 'App/Models/User'
+import Category from 'App/Models/Category'
 
 export default class StreamsController {
   public async streamCover({ params, response }: HttpContextContract) {
@@ -22,6 +23,22 @@ export default class StreamsController {
     const stream = new PassThrough()
     const transform = sharp()
       .resize(300, 300, {
+        fit: 'contain',
+      })
+      .webp()
+
+    file.Body.pipe(transform).pipe(stream)
+    return response.stream(stream)
+  }
+
+  public async streamIcon({ params, response }: HttpContextContract) {
+    const category = await Category.findByOrFail('icon', params.filename)
+
+    const file = await s3.send(new GetObjectCommand({ Bucket: 'icons-01', Key: category.icon }))
+
+    const stream = new PassThrough()
+    const transform = sharp()
+      .resize(64, 64, {
         fit: 'contain',
       })
       .webp()

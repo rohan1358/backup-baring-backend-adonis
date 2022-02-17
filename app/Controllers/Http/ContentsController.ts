@@ -327,10 +327,7 @@ export default class ContentsController {
       })
     }
 
-    const contentAw = await contents
-    console.log(contentAw)
-
-    const contentsJson = contentAw.map((content) => content.serialize())
+    const contentsJson = (await contents).map((content) => content.serialize())
     return {
       total: Math.ceil(Number((await total)[0].total || '0') / limit),
       data: contentsJson,

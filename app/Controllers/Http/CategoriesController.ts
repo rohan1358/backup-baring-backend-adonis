@@ -2,14 +2,47 @@ import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import Database from '@ioc:Adonis/Lucid/Database'
 import fs from 'fs'
 import Application from '@ioc:Adonis/Core/Application'
+import { schema } from '@ioc:Adonis/Core/Validator'
+import cuid from 'cuid'
 
 import Category from 'App/Models/Category'
+import { PutObjectCommand } from '@aws-sdk/client-s3'
+import s3 from 'App/Helpers/s3'
 
 export default class CategoriesController {
   public async index() {
-    const categories = await Category.all()
+    const categories = await Category.query().withCount('contents')
 
     return categories
+  }
+
+  public async addIcon({ params, request }: HttpContextContract) {
+    const category = await Category.findOrFail(params.id)
+    const { icon } = await request.validate({
+      schema: schema.create({
+        icon: schema.file({
+          size: '5mb',
+          extnames: ['jpg', 'jpeg', 'png'],
+        }),
+      }),
+    })
+
+    const result = await Database.transaction(async (t) => {
+      const fileName = `${cuid()}.${icon.extname}`
+      category.icon = fileName
+
+      await category.useTransaction(t).save()
+      const S3Command = new PutObjectCommand({
+        Bucket: 'icons-01',
+        Key: fileName,
+        Body: fs.createReadStream(icon.tmpPath!),
+      })
+      await s3.send(S3Command)
+
+      return category.serialize()
+    })
+
+    return result
   }
 
   public async contentGroupByCategory({ auth }: HttpContextContract) {

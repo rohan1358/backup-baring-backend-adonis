@@ -113,6 +113,7 @@ Route.group(() => {
     Route.get('/content', 'CategoriesController.contentGroupByCategory').middleware(
       'auth:userApi,adminApi'
     )
+    Route.put('/:id', 'CategoriesController.addIcon').middleware('auth:adminApi')
     Route.get('/:id', 'CategoriesController.read').middleware('auth:userApi,adminApi')
     Route.get('/', 'CategoriesController.index')
   }).prefix('/category')
@@ -123,6 +124,7 @@ Route.group(() => {
 
   Route.group(() => {
     Route.get('/cover/:filename', 'StreamsController.streamCover')
+    Route.get('/icon/:filename', 'StreamsController.streamIcon')
     Route.get('/partner-logo/:id', 'StreamsController.partnerLogo')
     Route.get('/course-cover/:filename', 'StreamsController.streamCourseCover')
     Route.get('/user-avatar/:filename', 'StreamsController.streamUserAvatar')
