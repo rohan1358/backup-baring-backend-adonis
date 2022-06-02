@@ -21,6 +21,9 @@
 import Route from '@ioc:Adonis/Core/Route'
 
 Route.group(() => {
+  // Route.get('/', async () => {
+  //   return { hello: 'world' }
+  // })
   Route.group(() => {
     Route.group(() => {
       Route.get('/get-token', 'AuthController.login')

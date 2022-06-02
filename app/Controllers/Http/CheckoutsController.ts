@@ -46,7 +46,13 @@ export default class CheckoutsController {
     return Math.floor(Math.random() * (999 - 100 + 1) + 100)
   }
 
-  private _createInvoice(userId: number, uniqueNumber: number, shipping: number, carts: Cart[], paysys = "moota") {
+  private _createInvoice(
+    userId: number,
+    uniqueNumber: number,
+    shipping: number,
+    carts: Cart[],
+    paysys = 'moota'
+  ) {
     return new Promise((resolve) => {
       ;(async () => {
         const data = {
@@ -60,6 +66,12 @@ export default class CheckoutsController {
           first_shipping: '0.00',
           first_total: '0.00',
           first_period: '1m',
+          second_subtotal: '22.00',
+          second_discount: '0.00',
+          second_tax: '0.00',
+          second_shipping: '0.00',
+          second_total: '00.00',
+          second_period: '1m',
           rebill_times: 99999, // means until cancel
           is_confirmed: 1, // Must be 1
           status: 0, // 1 - paid 0 - pending check Invoice model
@@ -85,10 +97,10 @@ export default class CheckoutsController {
                   shipping
                 ).toFixed(2),
                 first_tax: '0.00',
-                first_shipping: '0.00',
+                first_shipping: shipping,
                 first_period: product.nested['billing-plans'][0].first_period,
-                second_price: uniqueNumber.toFixed(2),
-                second_total: uniqueNumber.toFixed(2),
+                second_price: (item.product || item.course).price + uniqueNumber.toFixed(2),
+                second_total: (item.product || item.course).price + uniqueNumber.toFixed(2),
                 rebill_times: product.nested['billing-plans'][0].rebill_times,
                 currency: 'IDR',
                 billing_plan_id: product.nested['billing-plans'][0].plan_id, // Billing plan within  product, check am_billing_plan table.
@@ -322,7 +334,7 @@ export default class CheckoutsController {
         uniqueNumber,
         detail.shipping?.cost || 0,
         carts,
-        total > 0 ? "moota":"free"
+        total > 0 ? 'moota' : 'free'
       )
 
       if (!invoice) {
