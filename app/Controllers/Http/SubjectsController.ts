@@ -11,6 +11,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import Ffmpeg, * as ffmpeg from 'fluent-ffmpeg'
 
 import ffmpegPath from '@ffmpeg-installer/ffmpeg'
+import axios from 'axios'
 
 if (ffmpegPath) {
   ffmpegPath.path
@@ -119,10 +120,10 @@ export default class SubjectsController {
           .videoCodec('libx264')
           .size('360x?')
           .on('error', function (err) {
-            console.log('An error occurred: ' + err.message)
+            // console.log('An error occurred: ' + err.message)
           })
           .on('progress', function (progress) {
-            console.log('... frames: ' + progress.frames)
+            // console.log('... frames: ' + progress.frames)
           })
           .on('end', function () {
             resolve('Finished processing')
@@ -161,7 +162,7 @@ export default class SubjectsController {
       await subject.useTransaction(trx).save()
 
       if (video) {
-        console.log(video.tmpPath!)
+        // console.log(video.tmpPath!)
 
         await s3.send(
           new PutObjectCommand({
@@ -197,7 +198,7 @@ export default class SubjectsController {
         fs.readdir(`${__dirname}/path/to/`, (error, filesInDirectory) => {
           if (error) throw error
           for (let file of filesInDirectory) {
-            console.log('File removed' + ' : ' + file)
+            // console.log('File removed' + ' : ' + file)
             fs.unlinkSync(`${__dirname}/path/to/` + file)
           }
         })
@@ -328,10 +329,10 @@ export default class SubjectsController {
           .videoCodec('libx264')
           .size('360x?')
           .on('error', function (err) {
-            console.log('An error occurred: ' + err.message)
+            // console.log('An error occurred: ' + err.message)
           })
           .on('progress', function (progress) {
-            console.log('... frames: ' + progress.frames)
+            // console.log('... frames: ' + progress.frames)
           })
           .on('end', function () {
             resolve('Finished processing')
@@ -349,10 +350,6 @@ export default class SubjectsController {
       const pdfFileName = `${cuid()}.${pdf?.extname}`
       subject.title = title
       subject.body = body || ''
-
-      console.log('subject', subject)
-
-      console.log('deleteOld', deleteOld)
 
       if (video) {
         if (subject.video) {
@@ -425,7 +422,6 @@ export default class SubjectsController {
         fs.readdir(`${__dirname}/path/to/`, (error, filesInDirectory) => {
           if (error) throw error
           for (let file of filesInDirectory) {
-            console.log('File removed' + ' : ' + file)
             fs.unlinkSync(`${__dirname}/path/to/` + file)
           }
         })
@@ -521,6 +517,21 @@ export default class SubjectsController {
         }) as any,
         { expiresIn: 21600 }
       )
+      await new Promise((resolve, reject) => {
+        axios.get(video2, { timeout: 3000 }).catch((err) => {
+          if (err.response.status === 404) {
+            video2 = ''
+            resolve({
+              message: 'file not found',
+            })
+          }
+        })
+        setTimeout(() => {
+          resolve({
+            message: 'file exist',
+          })
+        }, 3000)
+      })
       video3 = await getSignedUrl(
         s3 as any,
         new GetObjectCommand({
@@ -529,6 +540,22 @@ export default class SubjectsController {
         }) as any,
         { expiresIn: 21600 }
       )
+      await new Promise((resolve, reject) => {
+        axios.get(video3, { timeout: 3000 }).catch((err) => {
+          if (err.response.status === 404) {
+            video3 = ''
+            resolve({
+              message: 'file not found',
+            })
+          }
+        })
+        setTimeout(() => {
+          resolve({
+            message: 'file exist',
+          })
+        }, 3000)
+      })
+
       video4 = await getSignedUrl(
         s3 as any,
         new GetObjectCommand({
@@ -537,6 +564,21 @@ export default class SubjectsController {
         }) as any,
         { expiresIn: 21600 }
       )
+      await new Promise((resolve, reject) => {
+        axios.get(video4, { timeout: 3000 }).catch((err) => {
+          if (err.response.status === 404) {
+            video4 = ''
+            resolve({
+              message: 'file not found',
+            })
+          }
+        })
+        setTimeout(() => {
+          resolve({
+            message: 'file exist',
+          })
+        }, 3000)
+      })
     }
 
     return {
