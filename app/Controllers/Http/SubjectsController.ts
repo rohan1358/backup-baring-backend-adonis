@@ -8,6 +8,16 @@ import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sd
 import fs from 'fs'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
+import Ffmpeg, * as ffmpeg from 'fluent-ffmpeg'
+
+import ffmpegPath from '@ffmpeg-installer/ffmpeg'
+
+if (ffmpegPath) {
+  ffmpegPath.path
+
+  Ffmpeg.setFfmpegPath(ffmpegPath.path)
+}
+
 export default class SubjectsController {
   private _infiniteLoad(query) {
     query
@@ -80,8 +90,49 @@ export default class SubjectsController {
       }),
     })
 
+    let id = cuid()
+
+    const filename = `${id}.${video?.extname}`
+
+    var output720 = `${__dirname}/path/to/${id}-720`
+    var output480 = `${__dirname}/path/to/${id}-480`
+    var output360 = `${__dirname}/path/to/${id}-360`
+
+    let q720 = `${id}-720.${video?.extname}`
+    let q480 = `${id}-480.${video?.extname}`
+    let q360 = `${id}-360.${video?.extname}`
+    let filename720 = `${output720}.${video?.extname}`
+    let filename480 = `${output480}.${video?.extname}`
+    let filename360 = `${output360}.${video?.extname}`
+
+    if (video) {
+      await new Promise((resolve, reject) => {
+        Ffmpeg(video.tmpPath)
+          .output(`${output720}.${video.extname}`)
+          .videoCodec('libx264')
+          .size('720x?')
+          .output(`${output480}.${video.extname}`)
+          .videoCodec('libx264')
+          .size('480x?')
+
+          .output(`${output360}.${video.extname}`)
+          .videoCodec('libx264')
+          .size('360x?')
+          .on('error', function (err) {
+            console.log('An error occurred: ' + err.message)
+          })
+          .on('progress', function (progress) {
+            console.log('... frames: ' + progress.frames)
+          })
+          .on('end', function () {
+            resolve('Finished processing')
+          })
+          .run()
+      })
+    }
+
     const result = await Database.transaction(async (trx) => {
-      const filename = `${cuid()}.${video?.extname}`
+      const filename = `${id}.${video?.extname}`
       const pdfFilename = `${cuid()}.${pdf?.extname}`
       const audioFilename = `${cuid()}.${audio?.extname}`
 
@@ -110,6 +161,8 @@ export default class SubjectsController {
       await subject.useTransaction(trx).save()
 
       if (video) {
+        console.log(video.tmpPath!)
+
         await s3.send(
           new PutObjectCommand({
             Key: filename,
@@ -117,6 +170,37 @@ export default class SubjectsController {
             Body: fs.createReadStream(video.tmpPath!),
           })
         )
+
+        await s3.send(
+          new PutObjectCommand({
+            Key: q720,
+            Bucket: 'video-online-course',
+            Body: fs.createReadStream(filename720),
+          })
+        )
+
+        await s3.send(
+          new PutObjectCommand({
+            Key: q480,
+            Bucket: 'video-online-course',
+            Body: fs.createReadStream(filename480),
+          })
+        )
+        await s3.send(
+          new PutObjectCommand({
+            Key: q360,
+            Bucket: 'video-online-course',
+            Body: fs.createReadStream(filename360),
+          })
+        )
+
+        fs.readdir(`${__dirname}/path/to/`, (error, filesInDirectory) => {
+          if (error) throw error
+          for (let file of filesInDirectory) {
+            console.log('File removed' + ' : ' + file)
+            fs.unlinkSync(`${__dirname}/path/to/` + file)
+          }
+        })
       }
       if (audio) {
         await s3.send(
@@ -215,15 +299,61 @@ export default class SubjectsController {
       }),
     })
 
+    let id = cuid()
+
+    const filename = `${id}.${video?.extname}`
+
+    var output720 = `${__dirname}/path/to/${id}-720`
+    var output480 = `${__dirname}/path/to/${id}-480`
+    var output360 = `${__dirname}/path/to/${id}-360`
+
+    let q720 = `${id}-720.${video?.extname}`
+    let q480 = `${id}-480.${video?.extname}`
+    let q360 = `${id}-360.${video?.extname}`
+    let filename720 = `${output720}.${video?.extname}`
+    let filename480 = `${output480}.${video?.extname}`
+    let filename360 = `${output360}.${video?.extname}`
+
+    if (video) {
+      await new Promise((resolve, reject) => {
+        Ffmpeg(video.tmpPath)
+          .output(`${output720}.${video.extname}`)
+          .videoCodec('libx264')
+          .size('720x?')
+          .output(`${output480}.${video.extname}`)
+          .videoCodec('libx264')
+          .size('480x?')
+
+          .output(`${output360}.${video.extname}`)
+          .videoCodec('libx264')
+          .size('360x?')
+          .on('error', function (err) {
+            console.log('An error occurred: ' + err.message)
+          })
+          .on('progress', function (progress) {
+            console.log('... frames: ' + progress.frames)
+          })
+          .on('end', function () {
+            resolve('Finished processing')
+          })
+          .run()
+      })
+    }
+
     const result = await Database.transaction(async (trx) => {
       let deleteOld: string | null = null
       let deleteOldAudio: string | null = null
       let deleteOldPdf: string | null = null
-      const filename = `${cuid()}.${video?.extname}`
+      const filename = `${id}.${video?.extname}`
       const audioFileName = `${cuid()}.${audio?.extname}`
       const pdfFileName = `${cuid()}.${pdf?.extname}`
       subject.title = title
       subject.body = body || ''
+
+      console.log('subject', subject)
+
+      console.log('deleteOld', deleteOld)
+
       if (video) {
         if (subject.video) {
           deleteOld = subject.video
@@ -236,6 +366,7 @@ export default class SubjectsController {
         }
         subject.audio = audioFileName
       }
+
       if (pdf) {
         if (subject.pdf) {
           deleteOldPdf = subject.pdf
@@ -247,7 +378,19 @@ export default class SubjectsController {
       if (video) {
         if (deleteOld) {
           await s3.send(new DeleteObjectCommand({ Key: deleteOld, Bucket: 'video-online-course' }))
+
+          let replace = subject.video.replace('.mp4', '')
+          await s3.send(
+            new DeleteObjectCommand({ Key: `${replace}-720.mp4`, Bucket: 'video-online-course' })
+          )
+          await s3.send(
+            new DeleteObjectCommand({ Key: `${replace}-480.mp4`, Bucket: 'video-online-course' })
+          )
+          await s3.send(
+            new DeleteObjectCommand({ Key: `${replace}-360.mp4`, Bucket: 'video-online-course' })
+          )
         }
+
         await s3.send(
           new PutObjectCommand({
             Key: filename,
@@ -255,6 +398,37 @@ export default class SubjectsController {
             Body: fs.createReadStream(video.tmpPath!),
           })
         )
+
+        await s3.send(
+          new PutObjectCommand({
+            Key: q720,
+            Bucket: 'video-online-course',
+            Body: fs.createReadStream(filename720),
+          })
+        )
+
+        await s3.send(
+          new PutObjectCommand({
+            Key: q480,
+            Bucket: 'video-online-course',
+            Body: fs.createReadStream(filename480),
+          })
+        )
+        await s3.send(
+          new PutObjectCommand({
+            Key: q360,
+            Bucket: 'video-online-course',
+            Body: fs.createReadStream(filename360),
+          })
+        )
+
+        fs.readdir(`${__dirname}/path/to/`, (error, filesInDirectory) => {
+          if (error) throw error
+          for (let file of filesInDirectory) {
+            console.log('File removed' + ' : ' + file)
+            fs.unlinkSync(`${__dirname}/path/to/` + file)
+          }
+        })
       }
       if (audio) {
         if (deleteOldAudio) {
@@ -298,7 +472,7 @@ export default class SubjectsController {
         this._infiniteLoad(query)
       })
       .preload('course', (query) => {
-        query.select('id', 'title',"cover")
+        query.select('id', 'title', 'cover')
       })
       .leftOuterJoin('boosts', (query) => {
         query
@@ -327,15 +501,50 @@ export default class SubjectsController {
         .firstOrFail()
     }
 
+    let video = ''
+    let video2 = ''
+    let video3 = ''
+    let video4 = ''
+    if (subject.video) {
+      let replace = subject.video.replace('.mp4', '')
+
+      video = await getSignedUrl(
+        s3 as any,
+        new GetObjectCommand({ Key: `${replace}.mp4`, Bucket: 'video-online-course' }) as any,
+        { expiresIn: 21600 }
+      )
+      video2 = await getSignedUrl(
+        s3 as any,
+        new GetObjectCommand({
+          Key: `${replace}-720.mp4`,
+          Bucket: 'video-online-course',
+        }) as any,
+        { expiresIn: 21600 }
+      )
+      video3 = await getSignedUrl(
+        s3 as any,
+        new GetObjectCommand({
+          Key: `${replace}-480.mp4`,
+          Bucket: 'video-online-course',
+        }) as any,
+        { expiresIn: 21600 }
+      )
+      video4 = await getSignedUrl(
+        s3 as any,
+        new GetObjectCommand({
+          Key: `${replace}-360.mp4`,
+          Bucket: 'video-online-course',
+        }) as any,
+        { expiresIn: 21600 }
+      )
+    }
+
     return {
       ...subject.toJSON(),
-      video: subject.video
-        ? await getSignedUrl(
-            s3 as any,
-            new GetObjectCommand({ Key: subject.video, Bucket: 'video-online-course' }) as any,
-            { expiresIn: 21600 }
-          )
-        : null,
+      video: subject.video ? video : null,
+      video720: subject.video ? video2 : null,
+      video480: subject.video ? video3 : null,
+      video360: subject.video ? video4 : null,
       comments_count: subject.$extras.comments_count,
       is_boosted: subject.$extras.is_boosted,
       is_member: subject.$extras.is_member,
