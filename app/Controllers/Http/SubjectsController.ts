@@ -8,7 +8,7 @@ import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sd
 import fs from 'fs'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
-import Ffmpeg, * as ffmpeg from 'fluent-ffmpeg'
+import Ffmpeg from 'fluent-ffmpeg'
 
 import ffmpegPath from '@ffmpeg-installer/ffmpeg'
 import axios from 'axios'
@@ -93,8 +93,6 @@ export default class SubjectsController {
 
     let id = cuid()
 
-    const filename = `${id}.${video?.extname}`
-
     var output720 = `${__dirname}/path/to/${id}-720`
     var output480 = `${__dirname}/path/to/${id}-480`
     var output360 = `${__dirname}/path/to/${id}-360`
@@ -107,7 +105,7 @@ export default class SubjectsController {
     let filename360 = `${output360}.${video?.extname}`
 
     if (video) {
-      await new Promise((resolve, reject) => {
+      await new Promise((resolve) => {
         Ffmpeg(video.tmpPath)
           .output(`${output720}.${video.extname}`)
           .videoCodec('libx264')
@@ -119,12 +117,6 @@ export default class SubjectsController {
           .output(`${output360}.${video.extname}`)
           .videoCodec('libx264')
           .size('360x?')
-          .on('error', function (err) {
-            // console.log('An error occurred: ' + err.message)
-          })
-          .on('progress', function (progress) {
-            // console.log('... frames: ' + progress.frames)
-          })
           .on('end', function () {
             resolve('Finished processing')
           })
@@ -302,8 +294,6 @@ export default class SubjectsController {
 
     let id = cuid()
 
-    const filename = `${id}.${video?.extname}`
-
     var output720 = `${__dirname}/path/to/${id}-720`
     var output480 = `${__dirname}/path/to/${id}-480`
     var output360 = `${__dirname}/path/to/${id}-360`
@@ -316,7 +306,7 @@ export default class SubjectsController {
     let filename360 = `${output360}.${video?.extname}`
 
     if (video) {
-      await new Promise((resolve, reject) => {
+      await new Promise((resolve) => {
         Ffmpeg(video.tmpPath)
           .output(`${output720}.${video.extname}`)
           .videoCodec('libx264')
@@ -328,12 +318,6 @@ export default class SubjectsController {
           .output(`${output360}.${video.extname}`)
           .videoCodec('libx264')
           .size('360x?')
-          .on('error', function (err) {
-            // console.log('An error occurred: ' + err.message)
-          })
-          .on('progress', function (progress) {
-            // console.log('... frames: ' + progress.frames)
-          })
           .on('end', function () {
             resolve('Finished processing')
           })
@@ -517,7 +501,7 @@ export default class SubjectsController {
         }) as any,
         { expiresIn: 21600 }
       )
-      await new Promise((resolve, reject) => {
+      await new Promise((resolve) => {
         axios.get(video2, { timeout: 3000 }).catch((err) => {
           if (err.response.status === 404) {
             video2 = ''
@@ -540,7 +524,7 @@ export default class SubjectsController {
         }) as any,
         { expiresIn: 21600 }
       )
-      await new Promise((resolve, reject) => {
+      await new Promise((resolve) => {
         axios.get(video3, { timeout: 3000 }).catch((err) => {
           if (err.response.status === 404) {
             video3 = ''
@@ -564,7 +548,7 @@ export default class SubjectsController {
         }) as any,
         { expiresIn: 21600 }
       )
-      await new Promise((resolve, reject) => {
+      await new Promise((resolve) => {
         axios.get(video4, { timeout: 3000 }).catch((err) => {
           if (err.response.status === 404) {
             video4 = ''
