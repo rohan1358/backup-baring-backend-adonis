@@ -1,0 +1,49 @@
+{
+  "typescript": false,
+  "commands": [
+    "./commands",
+    "@adonisjs/core/commands",
+    "@adonisjs/repl/build/commands",
+    "@adonisjs/lucid/build/commands"
+  ],
+  "exceptionHandlerNamespace": "App/Exceptions/Handler",
+  "aliases": {
+    "App": "app",
+    "Config": "config",
+    "Database": "database",
+    "Contracts": "contracts"
+  },
+  "preloads": [
+    "./start/routes",
+    "./start/kernel",
+    {
+      "file": "./start/events",
+      "environment": [
+        "console",
+        "repl",
+        "web"
+      ]
+    }
+  ],
+  "providers": [
+    "./providers/AppProvider",
+    "@adonisjs/core",
+    "@adonisjs/lucid",
+    "@adonisjs/auth"
+  ],
+  "aceProviders": [
+    "@adonisjs/repl"
+  ],
+  "metaFiles": [
+    ".env",
+    {
+      "pattern": "public/**",
+      "reloadServer": false
+    },
+    {
+      "pattern": "app/Services/**",
+      "reloadServer": false
+    }
+  ],
+  "lastCompiledAt": "2022-08-15T00:17:19.343Z"
+}
